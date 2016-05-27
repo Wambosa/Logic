@@ -139,10 +139,13 @@ function main(){
 
     let inGame = true;
 
-var playPile = shuffle(Object.create(startDeck)); //todo: new Deck()
+    var playPile = shuffle(Object.create(startDeck)); //todo: new Deck()
     var discardPile = []; //added property "user" = the person's uuid that used it
 
     //todo: everyone draw one card shift? pop?
+    players.forEach(function(player){
+        player.hand.push(playPile.pop());
+    });
 
     var cur = 0;
     var turns = 0;
@@ -154,6 +157,7 @@ var playPile = shuffle(Object.create(startDeck)); //todo: new Deck()
         me.isTurn = true;
 
         //todo: draw card.
+        me.hand.push(playPile.pop());
 
         let d = players.reduce(function(prev, cur){
             return prev.discard + cur.discard;
@@ -181,14 +185,13 @@ var playPile = shuffle(Object.create(startDeck)); //todo: new Deck()
         //for now choose only the best action.
         actions[0].f(); //figure a way to have self knowledge. apply(f, actions[0])
 
+        //todo: endTurn()
         me.isTurn = false;
         turns++;
         cur++;
         if(cur === players.length)
             cur = 0;
-
-        //todo: try to end game
-        // if only one player left then winner.wins++;
+        //then: try to end game if only one player left then winner.wins++; round++
 
         //todo: async save turn data (push to q system)
         let saveData = {
@@ -198,8 +201,6 @@ var playPile = shuffle(Object.create(startDeck)); //todo: new Deck()
             actions: actions,
             choice: 0
         };
-
-        // if(round++) > 3 then inGame = false and send end game
     }
 
 }
