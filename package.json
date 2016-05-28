@@ -1,0 +1,23 @@
+{
+  "name": "Logic",
+  "version": "1.0.0",
+  "appVersion": "0",
+  "description": "Backend game logic",
+  "main": "app.js",
+  "repository": "https://github.com/Wambosa/Logic",
+  "scripts": {
+    "start": "app.js",
+    "test": "jasmine-node spec"
+  },
+  "author": "Shon Diaz <shondiaz@gmail.com> http://shondiaz.com",
+  "engines": {
+    "node": ">=4.2.4"
+  },
+  "dependencies": {
+    "mathjs": "*"
+  },
+  "devDependencies": {
+    "jasmine-node": "^1.14.5",
+    "rewire": "^2.5.1"
+  }
+}

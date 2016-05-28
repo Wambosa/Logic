@@ -1,6 +1,13 @@
 "use strict";
 
 var math = require('mathjs');
+var tool = require('src/tool');
+var ai = require('src/ai');
+
+var random = tool.random;
+var dedup = tool.dedup;
+var toMask = tool.toMask;
+var shuffle = tool.shuffle;
 
 // first i need to figure out the game logic loop
 // i will run the loop without any network connections.
@@ -24,20 +31,20 @@ const startDeck = [
     {mask: guard, name: "Guard", perk: "accuse" },
     {mask: guard, name: "Guard", perk: "accuse" },
     {mask: guard, name: "Guard", perk: "accuse" },
-    {mask: 2, name: "Priest", perk: "spy" },
-    {mask: 2, name: "Priest", perk: "spy" },
-    {mask: 4, name: "Baron", perk: "debate" },
-    {mask: 4, name: "Baron", perk: "debate" },
-    {mask: 8, name: "Handmaid", perk: "protect" },
-    {mask: 8, name: "Handmaid", perk: "protect" },
-    {mask: 16, name: "Prince", perk: "policy" },
-    {mask: 16, name: "Prince", perk: "policy" },
-    {mask: 32, name: "King", perk: "mandate" },
-    {mask: 64, name: "Countess", perk: "subvert" },
-    {mask: 128, name: "Princess", perk: "favor" }
+    {mask: priest, name: "Priest", perk: "spy" },
+    {mask: priest, name: "Priest", perk: "spy" },
+    {mask: baron, name: "Baron", perk: "debate" },
+    {mask: baron, name: "Baron", perk: "debate" },
+    {mask: handmaiden, name: "Handmaid", perk: "protect" },
+    {mask: handmaiden, name: "Handmaid", perk: "protect" },
+    {mask: prince, name: "Prince", perk: "policy" },
+    {mask: prince, name: "Prince", perk: "policy" },
+    {mask: king, name: "King", perk: "mandate" },
+    {mask: countess, name: "Countess", perk: "subvert" },
+    {mask: princess, name: "Princess", perk: "favor" }
 ];
 
-//later: these ideals will be some kind of arg stored elsewhere in a nosql
+//later: these ideals will be some kind of datasource stored elsewhere in a nosql or json
 var shon = {
     "accuse": {
         mask: guard,
@@ -324,6 +331,8 @@ var glen = {
     }
 };
 
+//additionally, the player roster will need to be passed to the program in order to initiate a match.
+//i do want a npc generator later on however in the case of no human player matches
 var players = [
     {
         uuid: "Shon",
@@ -360,11 +369,10 @@ function main(){
 
     let inGame = true;
 
-    var playPile = shuffle(Object.create(startDeck)); //todo: new Deck()
+    var playPile = shuffle(startDeck); //todo: new Deck()
     stashEvents.push(Object.create(playPile));//todo: stashObject nosql q system
     var discardPile = []; //added property "user" = the person's uuid that used it
 
-    //todo: everyone draw one card shift? pop?
     players.forEach(function(player){
         player.hand.push(playPile.pop());
         player.inPlay = true;
@@ -384,13 +392,13 @@ function main(){
         //todo: draw card.
         me.hand.push(playPile.pop());
 
-        let d = players.reduce(function(prev, cur){
-            return prev.discard + cur.discard;
+        //todo: getFoeDiscardCount
+        let d = players.filter(function(p){return !p.isTurn;})
+            .reduce(function(prev, cur){
+                return prev.discard + cur.discard;
         });
 
-        let h = dedup(me.hand).reduce(function(prev, cur){
-            return prev.mask + cur.mask;
-        });
+        let h = toMask(me.hand);
 
         let gameState = players.map(function(p){
             return {
@@ -398,18 +406,20 @@ function main(){
                 t: p.isTurn && 1 || 2,
                 m: [
                     [me.wins, p.wins],
-                    [h, speculate(startDeck, discardPile, me.hand)], //todo: dont let speculation results to be the same (personality based f())
+                    [h, ai.speculate(startDeck, discardPile, me.hand)], //todo: dont let speculation results to be the same (personality based f())
                     [me.discard, d]
                 ]
             };
         });
 
-        let thoughts = think(gameState, me.hand);
+        let thoughts = ai.think(gameState, me.hand);
 
         //perhaps it is best to attempt to perform each action starting with the best, if it is illegal, then just try the next action.
-        let choice = thoughts.find(function(thought){
+        let discard = thoughts.find(function(thought){
             return funcs(gameState, players)[thought.action](thought)
         });
+
+        discardPile.push(discard);
 
         //todo: endTurn()
         me.isTurn = false;
@@ -424,105 +434,19 @@ function main(){
             turns: turns,
             gameState: gameState,
             thoughts: thoughts,
-            choice: choice
+            choice: discard
         };
         stashEvents.push(saveData);
 
         //then: try to end game if only one player left then winner.wins++; round++
         inGame = players.filter(function(p){return p.inPlay;}).length < 2;
     }
+
+    console.log("game has ended!");
 }
 
-
-function speculate(deck, discard, hand) {
-    //todo: toMask()
-    let possible = deck.map(function(d){
-        return d.mask;
-    });
-    let known = hand.concat(discard).map(function(k){
-        return k.mask;
-    });
-
-    known.forEach(function(k){
-        possible.splice(possible.indexOf(k), 1);
-    });
-
-    let guess = random(possible.length);
-
-    return possible[guess];
-}
-
-function think(targets, choices) {
-    var actions = [];
-
-    choices.forEach(function(c){
-        targets.filter(function(tar){
-            return !tar.isImmune && tar.t & c.t;
-        }).forEach(function(tar){
-            actions.push({
-                risk: computeRisk(tar.m, c.m),
-                target: tar.uuid,
-                action: c.uuid
-            });
-        });
-    });
-
-    return actions.sort(function(a, b){
-        return a.risk > b.risk;
-    });
-}
-
-function computeRisk(target, action){
-    target = math.matrix(target);
-    action = math.matrix(action);
-    let ignorables = math.and(math.ceil(target), math.ceil(action))
-    target = math.dotMultiply(target, ignorables)
-
-    //there are 3 ish steps here
-    let w = math.index(0, [0,1]); // difference the wins
-    let c = math.index(1, [0,1]); // bit compare the cards
-    let n = math.index(2, [0,1]); // difference the counts
-
-    let risk = 10; //inherent risk
-    risk += math.sum(math.abs(math.subtract(target.subset(w), action.subset(w))));
-    risk += math.sum(math.abs(math.subtract(target.subset(n), action.subset(n))));
-
-    // i actually want to do hamming weight for more complex games.
-    // The hamming weight can only ever be 1 or 0 for this game.
-    // the preferred card decreses risk instead of reduces it.
-
-    let bitAnd = math.bitAnd(target.subset(c), action.subset(c))._data[0]; //todo: hamming weight * impact
-    risk += bitAnd[0] && -2;
-    risk += bitAnd[1] && -2;
-
-    return risk;
-}
-
-function dedup(list) {
-    return Object.create(list).sort().filter(function(item, pos, ary) {
-        return !pos || item.mask != ary[pos - 1].mask;
-    })
-}
-
-function shuffle(list){
-    let count = list.length;
-    let swap = 0;
-
-    for (let i=count; i>0; i--){
-        swap = random(i);
-        let temp = list[i]; //warn: might need object.create
-        list[i] = list[swap];
-        list[swap] = temp;
-    }
-
-    return list;
-}
-
-function random(upper, lower){
-    return Math.floor((Math.random() * upper) + lower || 0);
-}
-
-//todo: think about where this belongs
+//todo: convert to a service like file. require('cardFunctions') or require('cardActions').configure(gameState, players)
+//todo: test the mutability of the objects passed into a configure method. i imagine that the object reference is passed, however, i need to be sure.
 //potentially create funcs(players) let self.players = players return {f...} instead of globals.. so i can test
 var funcs = function(gameState, players){
     return {
@@ -533,12 +457,11 @@ var funcs = function(gameState, players){
         },
 
         accuse: function(thought) {
-
             let target = this.player(thought.target);
             let speculation = gameState.find(function(g){return g.uuid === thought.target;}).m[1][1];
             let me = this.player(players.find(function(p){return p.isTurn;}));
 
-            let valid = speculation & guard; //note: cannot accuse another guard
+            let valid = speculation & guard; //rule: cannot accuse another guard
 
             if(!valid)
                 return false;
@@ -547,15 +470,24 @@ var funcs = function(gameState, players){
 
             target.inPlay = guessCard & target.hand.reduce(function(p,c){return p+c;});//use dedup(hand).toMask()
 
+            //todo:convert to endTurn here?
             for(var i=0; i<me.hand.length;i++){
                 if(me.hand[i].perk === thought.action){
+
+                    //this can only work because player only ever have one card in their hands
+                    //todo: additionally, i just realized that i have no factor that accounts for other players knowing what my hand is.
+                    players.forEach(function(player){
+                        let publicKnown = player.peek[me.uuid];
+                        player.peek[me.uuid] =  publicKnown === me.hand[i].mask ? null : publicKnown;
+                    });
+
                     return me.hand.splice(i, 1);
                 }
             }
-
-            return "broken";
+            throw new Error(`Accuse action was considered valid, yet no guard card exists in player ${me.uuid}.hand ${me.hand}`);
         },
-        spy: function(gameState, tar){
+
+        spy: function(thought){
             //todo: reveal card to current player
             let me = players.find(function(p){return p.isTurn;});
             let target = players[tar.index];
@@ -591,6 +523,7 @@ var funcs = function(gameState, players){
         }
     };
 };
+
 
 var stashEvents = [];
 main();
