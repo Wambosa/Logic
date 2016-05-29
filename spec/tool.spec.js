@@ -10,6 +10,18 @@ describe("the helper tools", function(){
         it("accepts an upper boundary by default", function(){
             expect(typeof tool.random(9000)).toBe('number');
         });
+
+        it("honors max bounds", function(){
+            expect(tool.random(1)).toBeLessThan(2);
+        });
+
+        it("honors min bounds", function(){
+            expect(tool.random(3, 2)).toBeGreaterThan(1);
+        });
+
+        it("honors min/max range bounds", function(){
+            expect(tool.random(9000, 9000)).toEqual(9000);
+        });
     });
 
     describe("when simplify-ing an object array", function(){
@@ -101,8 +113,7 @@ describe("the helper tools", function(){
                 {name: "android13", mask: 2}
             ];
 
-            expect(typeof tool.toMask(cards)).toBe('number');
-            expect(tool.toMask(cards) % 1).toBeFalsy();
+            expect(tool.toMask(cards) % 1).toBe(0);
         });
 
         it("always de-duplicates", function(){

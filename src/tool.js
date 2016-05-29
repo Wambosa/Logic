@@ -5,7 +5,7 @@ module.exports = {
     random: function (upper, lower) {
         upper++;
         lower = lower || 0;
-        return Math.floor((Math.random() * upper) + lower);
+        return Math.floor((Math.random() * (upper - lower)) + lower);
     },
 
     simplify: function(list, field_){

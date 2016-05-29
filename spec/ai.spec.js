@@ -19,8 +19,7 @@ describe("the AI module", function(){
 
             let guess = ai.speculate(deck, discard, hand);
 
-            expect(typeof guess).toBe("number");
-            expect(guess % 1).toBeFalsy();
+            expect(guess % 1).toBe(0);
         });
 
         it("removes discardPile and myHand from possible guess", function(){
