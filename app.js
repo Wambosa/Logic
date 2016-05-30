@@ -1,12 +1,11 @@
 "use strict";
 
-var math = require('mathjs');
 var tool = require('src/tool');
 var ai = require('src/ai');
 
 var random = tool.random;
-var dedup = tool.dedup;
 var toMask = tool.toMask;
+var toMind = tool.toMind;
 var shuffle = tool.shuffle;
 
 // first i need to figure out the game logic loop
@@ -15,6 +14,10 @@ var shuffle = tool.shuffle;
 
 // for now, don't worry about databases at all. just inline all the data and get some quick results
 // proof of concept is the most important thing right now.
+
+const tar_self = 1;
+const tar_foe = 2;
+const tar_any = 3;
 
 const guard = 1;
 const priest = 2;
@@ -386,8 +389,10 @@ function main(){
 
     while (inGame){
 
+        //todo: beginTurn()
         let me = players[cur];
         me.isTurn = true;
+        me.isImmune = false; //immunity ends at the beginning of your turn.
 
         //todo: draw card.
         me.hand.push(playPile.pop());
@@ -404,6 +409,7 @@ function main(){
             return {
                 uuid: p.uuid,
                 t: p.isTurn && 1 || 2,
+                isImmune: p.isImmune,
                 m: [
                     [me.wins, p.wins],
                     [h, ai.speculate(startDeck, discardPile, me.hand)], //todo: dont let speculation results to be the same (personality based f())
@@ -412,7 +418,7 @@ function main(){
             };
         });
 
-        let thoughts = ai.think(gameState, me.hand);
+        let thoughts = ai.think(gameState, toMind(me.hand, me.ideals));
 
         //perhaps it is best to attempt to perform each action starting with the best, if it is illegal, then just try the next action.
         let discard = thoughts.find(function(thought){

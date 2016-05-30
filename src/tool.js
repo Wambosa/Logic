@@ -31,6 +31,17 @@ module.exports = {
         });
     },
 
+    toMind: function(hand, ideals){
+        return hand.map(function(card){
+            let i = ideals[card.perk];
+            return {
+                uuid: card.perk,
+                t: i.t,
+                m: i.m
+            };
+        });
+    },
+
     shuffle: function (list_) {
         let list = list_.splice(0);
         let count = list.length;

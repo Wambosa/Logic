@@ -2,6 +2,7 @@
 
 var root = process.cwd();
 var ai = require(`${root}/src/ai`);
+var t = require(`${root}/src/tool`);
 
 describe("the AI module", function(){
 
@@ -180,6 +181,121 @@ describe("the AI module", function(){
             ];
 
             expect(ai.computeRisk(target, action)).toEqual(baseRisk);
+        });
+    });
+
+    describe("when thinking about the best choice", function(){
+
+        const tar_self = 1;
+        const tar_foe = 2;
+
+        const guard = 1;
+        const priest = 2;
+
+        it("does not think about invalid targets", function(){
+            let gameState = [
+                {
+                    uuid: "me",
+                    t: tar_self,
+                    isImmune: false,
+                    m: [
+                        [0, 0],
+                        [0, 0],
+                        [0, 0]
+                    ]
+                }
+            ];
+
+            let myHand = [
+                {mask: priest, perk: "spy" }
+            ];
+
+            let myIdeals = {
+                "spy": {
+                    t: 2,
+                    m: [[-1, 2],
+                        [128, 32],
+                        [3, 8]
+                    ]
+                }
+            };
+
+            expect(ai.think(gameState, t.toMind(myHand, myIdeals))).toEqual([]);
+        });
+
+        it("does not think about immune* targets", function(){
+            //note*: there is a difference. The immune player has an effect that makes them safe for targeting.
+
+            let gameState = [
+                {
+                    uuid: "foe",
+                    t: tar_foe,
+                    isImmune: true,
+                    m: [
+                        [0, 0],
+                        [0, 0],
+                        [0, 0]
+                    ]
+                }
+            ];
+
+            let myHand = [
+                {mask: priest, perk: "spy" }
+            ];
+
+            let myIdeals = {
+                "spy": {
+                    t: 2,
+                    m: [[-1, 2],
+                        [128, 32],
+                        [3, 8]
+                    ]
+                }
+            };
+
+            expect(ai.think(gameState, t.toMind(myHand, myIdeals))).toEqual([]);
+        });
+
+        it("orders thoughts by lowest risk first", function(){
+            let gameState = [
+                {
+                    uuid: "foe",
+                    t: tar_foe,
+                    isImmune: false,
+                    m: [
+                        [0, 0],
+                        [3, 32],
+                        [0, 0]
+                    ]
+                }
+            ];
+
+            let myHand = [
+                {mask: priest, perk: "spy" },
+                {mask: guard, perk: "accuse" }
+            ];
+
+            let myIdeals = {
+                "accuse": {
+                    t: 2,
+                    m: [[-1, 2],
+                        [128, 32],
+                        [3, 8]
+                    ]
+                },
+                "spy": {
+                    t: 2,
+                    m: [
+                        [2, -1],
+                        [53, 127],
+                        [-1, -1]
+                    ]
+                }
+            };
+
+            let thoughts = ai.think(gameState, t.toMind(myHand, myIdeals));
+
+            expect(thoughts[0].risk).toBeLessThan(thoughts[1].risk);
         });
     });
 });
