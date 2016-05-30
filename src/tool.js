@@ -31,17 +31,6 @@ module.exports = {
         });
     },
 
-    toMind: function(hand, ideals){
-        return hand.map(function(card){
-            let i = ideals[card.perk];
-            return {
-                uuid: card.perk,
-                t: i.t,
-                m: i.m
-            };
-        });
-    },
-
     shuffle: function (list_) {
         let list = list_.splice(0);
         let count = list.length;
@@ -53,5 +42,25 @@ module.exports = {
         }
 
         return list;
+    },
+
+    //todo: write tests for funcs below
+    toMind: function(hand, ideals){
+        return hand.map(function(card){
+            let i = ideals[card.perk];
+            return {
+                uuid: card.perk,
+                t: i.t,
+                m: i.m
+            };
+        });
+    },
+
+    find: function (objList, property, key_) {
+        let key = arguments[arguments.length-1];
+        let prop = property || 'uuid';
+        return objList.find(function (obj) {
+            return obj[prop] === key;
+        });
     }
 };

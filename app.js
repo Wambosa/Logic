@@ -444,7 +444,7 @@ function main(){
         };
         stashEvents.push(saveData);
 
-        //then: try to end game if only one player left then winner.wins++; round++
+        //then: try to end game if only one player left then winner.wins++; round++ (dont just kill the loop unless 3 rounds have been attained by a single player)
         inGame = players.filter(function(p){return p.inPlay;}).length < 2;
     }
 

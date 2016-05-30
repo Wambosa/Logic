@@ -14,7 +14,8 @@
     "node": ">=4.2.4"
   },
   "dependencies": {
-    "mathjs": "*"
+    "mathjs": "*",
+    "ramda": "^0.19.1"
   },
   "devDependencies": {
     "jasmine-node": "^1.14.5",
