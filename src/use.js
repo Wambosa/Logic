@@ -31,7 +31,7 @@ function discard(hand, card){
     if(index === -1)
         throw new Error("FATAL: use.discard must NOT fail to remove a card from the hand.");
 
-    return hand.splice(index, 1);
+    return hand.splice(index, 1)[0];
 }
 
 
@@ -67,14 +67,15 @@ module.exports = {
             },
 
             spy: function (thought) {
-                //todo: reveal card to current player
-                let me = players.find(function (p) {
-                    return p.isTurn;
-                });
-                let target = players[tar.index];
-                me.peek[target.uuid] = target.hand; //todo: toMask && init the peek object on players
 
-                return target.hand;//todo: toMask
+                let me = findMe(true);
+                let target = player(thought.target);
+
+                me.peek[target.uuid] = t.toMask(target.hand);
+
+                let playedCard = t.find(me.hand, 'perk', thought.action);
+
+                return discard(me.hand, playedCard);
             },
             debate: function (gameState, tar) {
                 //compare the highest card. hig card wins. low card loses

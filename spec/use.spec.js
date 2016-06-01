@@ -74,6 +74,17 @@ describe("a cardUse instance", function(){
             discard(hand, {mask: 1, perk: "accuse"});
             expect(hand[0]).toEqual({mask:2, perk: "spy"});
         });
+
+        it("returns the removed card", function(){
+            let hand = [
+                {mask: 64, perk: "subvert"},
+                {mask: 32, perk: "mandate"}
+            ];
+
+            expect(discard(hand, {mask: 32, perk: "mandate"}))
+                .toEqual({mask:32, perk: "mandate"});
+        });
+
     });
 
     describe("given the current player ACCUSEs a target foe", function(){
@@ -97,7 +108,6 @@ describe("a cardUse instance", function(){
                     ]
                 }
             ];
-
             let players = [
                 {
                     uuid: "goku",
@@ -121,7 +131,7 @@ describe("a cardUse instance", function(){
 
             let u = use.configure(gameState, players);
 
-            let discard = u.accuse({
+            u.accuse({
                 risk: 0,
                 target: "vegeta",
                 action: "accuse"
@@ -144,12 +154,11 @@ describe("a cardUse instance", function(){
                     uuid: "vegeta",
                     m: [
                         [0, 0],
-                        [3, 128],
+                        [3, 64],
                         [0, 0]
                     ]
                 }
             ];
-
             let players = [
                 {
                     uuid: "goku",
@@ -175,7 +184,7 @@ describe("a cardUse instance", function(){
 
             let u = use.configure(gameState, players);
 
-            let discard = u.accuse({
+            u.accuse({
                 risk: 0,
                 target: "vegeta",
                 action: "accuse"
@@ -203,7 +212,6 @@ describe("a cardUse instance", function(){
                     ]
                 }
             ];
-
             let players = [
                 {
                     uuid: "goku",
@@ -255,7 +263,6 @@ describe("a cardUse instance", function(){
                     ]
                 }
             ];
-
             let players = [
                 {
                     uuid: "goku",
@@ -279,7 +286,7 @@ describe("a cardUse instance", function(){
 
             let u = use.configure(gameState, players);
 
-            let discard = u.accuse({
+            u.accuse({
                 risk: 0,
                 target: "vegeta",
                 action: "accuse"
@@ -287,7 +294,119 @@ describe("a cardUse instance", function(){
 
             expect(players[1].inPlay).toBeTruthy();
         });
+
+        it("when completed successfully, returns the card played", function(){
+            let gameState = [
+                {
+                    uuid: "goku",
+                    m: [
+                        [0, 0],
+                        [3, 3],
+                        [0, 0]
+                    ]
+                },
+                {
+                    uuid: "vegeta",
+                    m: [
+                        [0, 0],
+                        [3, 4],
+                        [0, 0]
+                    ]
+                }
+            ];
+            let players = [
+                {
+                    uuid: "goku",
+                    inPlay: true,
+                    isTurn: true,
+                    hand: [
+                        {mask: 1, perk: "accuse"},
+                        {mask: 2, perk: "spy"}
+                    ],
+                    peek: {}
+                },
+                {
+                    uuid: "vegeta",
+                    inPlay: true,
+                    hand: [
+                        {mask: 4, perk: "debate"}
+                    ],
+                    peek: {}
+                }
+            ];
+
+            let u = use.configure(gameState, players);
+
+            let discard = u.accuse({
+                target: "vegeta",
+                action: "accuse"
+            });
+
+            expect(discard).toEqual({mask:1, perk: "accuse"});
+        });
     });
 
+    describe("when current player SPYs on target foe", function(){
+
+        it("then update peek knowledge of target foe's hand", function(){
+
+            let players = [
+                {
+                    uuid: "goku",
+                    isTurn: true,
+                    hand: [
+                        {mask: 1, perk: "accuse"},
+                        {mask: 2, perk: "spy"}
+                    ],
+                    peek: {}
+                },
+                {
+                    uuid: "vegeta",
+                    hand: [
+                        {mask: 16, perk: "policy"}
+                    ]
+                }
+            ];
+
+            //todo: potentially reconsider merging gamestate with players? why did i keep them separate?
+            let u = use.configure(null, players);
+
+            u.spy({
+                target: "vegeta",
+                action: "spy"
+            });
+
+            expect(players[0].peek["vegeta"]).toEqual(16);
+        });
+
+        it("returns played card", function(){
+            let players = [
+                {
+                    uuid: "goku",
+                    isTurn: true,
+                    hand: [
+                        {mask: 1, perk: "accuse"},
+                        {mask: 2, perk: "spy"}
+                    ],
+                    peek: {}
+                },
+                {
+                    uuid: "vegeta",
+                    hand: [
+                        {mask: 16, perk: "policy"}
+                    ]
+                }
+            ];
+
+            let u = use.configure(null, players);
+
+            let discard = u.spy({
+                target: "vegeta",
+                action: "spy"
+            });
+
+            expect(discard).toEqual({mask: 2, perk: "spy"});
+        });
+    });
 
 });
