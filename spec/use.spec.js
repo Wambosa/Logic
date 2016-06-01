@@ -462,6 +462,39 @@ describe("a cardUse instance", function(){
             expect(discard).toEqual({mask: 2, perk: "spy"});
         });
 
+        it("when completed successfully, returns the card played", function(){
+
+            let players = [
+                {
+                    uuid: "goku",
+                    inPlay: true,
+                    isTurn: true,
+                    hand: [
+                        {mask: 1, perk: "accuse"},
+                        {mask: 2, perk: "spy"}
+                    ],
+                    peek: {}
+                },
+                {
+                    uuid: "vegeta",
+                    inPlay: true,
+                    hand: [
+                        {mask: 4, perk: "debate"}
+                    ],
+                    peek: {}
+                }
+            ];
+
+            let u = use.configure(null, players);
+
+            let discard = u.spy({
+                target: "vegeta",
+                action: "spy"
+            });
+
+            expect(discard).toEqual({mask:2, perk: "spy"});
+        });
+
         it("implements unPeek", function(){
             let players = [
                 {
@@ -631,6 +664,39 @@ describe("a cardUse instance", function(){
             expect(players[0].inPlay === true).toBe(players[1].inPlay);
         });
 
+        it("when completed successfully, returns the card played", function(){
+
+            let players = [
+                {
+                    uuid: "goku",
+                    inPlay: true,
+                    isTurn: true,
+                    hand: [
+                        {mask: 1, perk: "accuse"},
+                        {mask: 4, perk: "debate"}
+                    ],
+                    peek: {}
+                },
+                {
+                    uuid: "vegeta",
+                    inPlay: true,
+                    hand: [
+                        {mask: 4, perk: "debate"}
+                    ],
+                    peek: {}
+                }
+            ];
+
+            let u = use.configure(null, players);
+
+            let discard = u.debate({
+                target: "vegeta",
+                action: "debate"
+            });
+
+            expect(discard).toEqual({mask:4, perk: "debate"});
+        });
+
         it("implements unPeek", function(){
             let players = [
                 {
@@ -665,5 +731,88 @@ describe("a cardUse instance", function(){
         });
     });
 
+    describe("when player PROTECTs self", function(){
 
+        it("sets the immunity flag on self", function(){
+            let players = [
+                {
+                    uuid: "goku",
+                    inPlay: true,
+                    isTurn: true,
+                    hand: [
+                        {mask: 1, perk: "accuse"},
+                        {mask: 8, perk: "protect"}
+                    ],
+                    peek: {}
+                }
+            ];
+
+            let u = use.configure(null, players);
+
+            u.protect({
+                target: "goku",
+                action: "protect"
+            });
+
+            expect(players[0].isImmune).toBeTruthy();
+
+        });
+
+        it("when completed successfully, returns the card played", function(){
+
+            let players = [
+                {
+                    uuid: "goku",
+                    inPlay: true,
+                    isTurn: true,
+                    hand: [
+                        {mask: 1, perk: "accuse"},
+                        {mask: 8, perk: "protect"}
+                    ],
+                    peek: {}
+                }
+            ];
+
+            let u = use.configure(null, players);
+
+            let discard = u.protect({
+                target: "goku",
+                action: "protect"
+            });
+
+            expect(discard).toEqual({mask:8, perk: "protect"});
+        });
+
+        it("implements unPeek", function(){
+            let players = [
+                {
+                    uuid: "goku",
+                    isTurn: true,
+                    hand: [
+                        {mask: 1, perk: "accuse"},
+                        {mask: 8, perk: "protect"}
+                    ],
+                    peek: {}
+                },
+                {
+                    uuid: "vegeta",
+                    hand: [
+                        {mask: 16, perk: "policy"}
+                    ],
+                    peek: {
+                        goku: 8
+                    }
+                }
+            ];
+
+            let u = use.configure(null, players);
+
+            u.debate({
+                target: "goku",
+                action: "protect"
+            });
+
+            expect(players[1].peek["goku"]).toBeFalsy();
+        });
+    });
 });

@@ -96,9 +96,21 @@ module.exports = {
 
                 return playedCard;
             },
-            protect: function (gameState, tar) {
-                //trigger isImmune Flag on player
+
+            protect: function (thought) {
+
+                let me = findMe(true);
+
+                //rule: can only target self for immunity
+                me.isImmune = true;
+
+                let playedCard = discard(me.hand, t.find(me.hand, 'perk', thought.action));
+
+                unPeek(me.uuid, playedCard.mask);
+
+                return playedCard;
             },
+
             policy: function (gameState, tar) {
                 //make target discard
                 //for now, check for princess card. later, each card will have a event/discard handler
