@@ -425,6 +425,12 @@ function main(){
             return funcs(gameState, players)[thought.action](thought)
         });
 
+        let isLegal = !!discard;
+
+        //if there is no legal action, then just discard :(
+        //todo: noMoveDiscard(me.hand, thoughts[0].action)
+        discard = discard || me.hand.splice(t.find(me.hand, "perk", thoughts[0].action), 1);
+
         discardPile.push(discard);
 
         //todo: endTurn()
@@ -440,7 +446,8 @@ function main(){
             turns: turns,
             gameState: gameState,
             thoughts: thoughts,
-            choice: discard
+            choice: discard,
+            legal: isLegal
         };
         stashEvents.push(saveData);
 

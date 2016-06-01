@@ -128,6 +128,14 @@ describe("the helper tools", function(){
 
             expect(tool.toMask(cards)).toBe(3);
         });
+
+        it("converts a single item", function(){
+            let cards = [
+                {name: "janemba", mask: 128}
+            ];
+
+            expect(tool.toMask(cards)).toBe(128);
+        });
     });
 
     describe("when shuffling an object array", function(){

@@ -26,8 +26,8 @@ module.exports = {
 
     toMask: function(list, field_){
         let field = field_ || 'mask';
-        return this.dedup(list).reduce(function(prev, cur){
-            return prev[field] + cur[field];
+        return this.simplify(this.dedup(list), field).reduce(function(prev, cur){
+            return prev + cur;
         });
     },
 

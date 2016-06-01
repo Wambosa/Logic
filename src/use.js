@@ -1,5 +1,6 @@
 "use strict";
 
+var root = process.cwd();
 var t = require(`${root}/src/tool`);
 var _ = require('ramda');
 
@@ -12,12 +13,35 @@ const king = 32;
 const countess = 64;
 const princess = 128;
 
+function removePeek(players, uuid, cardMask){
+
+    //this can only work because player only ever have one card in their hands
+    //todo: additionally, i just realized that i have no factor that accounts for other players knowing what my hand is.
+    players.forEach(function (player) {
+        let known = player.peek[uuid];
+        player.peek[uuid] = known & cardMask ? null : known;
+    });
+
+    return true;
+}
+
+function discard(hand, card){
+    let index = t.simplify(hand).indexOf(card.mask);
+
+    if(index === -1)
+        throw new Error("FATAL: use.discard must NOT fail to remove a card from the hand.");
+
+    return hand.splice(index, 1);
+}
+
+
 module.exports = {
     configure: function (gameState, players) {
 
         let player = _.curry(t.find)(players, null);
         let stateOf = _.curry(t.find)(gameState, null);
         let findMe = _.curry(t.find)(players, 'isTurn');
+        let unPeek = _.curry(removePeek)(players);
 
         return {
 
@@ -27,28 +51,19 @@ module.exports = {
                 let target = player(thought.target);
                 let speculation = me.peek[target.uuid] || stateOf(thought.target).m[1][1];
 
+                //todo: instead of invalidating, either respeculate or change guess to random (if this is the only option)
                 let illegal = speculation & guard; //rule: cannot accuse another guard
 
                 if (illegal)
                     return false;
 
-                target.inPlay = speculation & t.toMask(target.hand);
+                target.inPlay = !(speculation & t.toMask(target.hand));
 
-                //todo:convert to endTurn here?
-                for (var i = 0; i < me.hand.length; i++) {
-                    if (me.hand[i].perk === thought.action) {
+                let playedCard = t.find(me.hand, 'perk', thought.action);
 
-                        //this can only work because player only ever have one card in their hands
-                        //todo: additionally, i just realized that i have no factor that accounts for other players knowing what my hand is.
-                        players.forEach(function (player) {
-                            let publicKnown = player.peek[me.uuid];
-                            player.peek[me.uuid] = publicKnown === me.hand[i].mask ? null : publicKnown;
-                        });
+                unPeek(me.uuid, playedCard.mask);
 
-                        return me.hand.splice(i, 1);
-                    }
-                }
-                throw new Error(`Accuse action was considered valid, yet no guard card exists in player ${me.uuid}.hand ${me.hand}`);
+                return discard(me.hand, playedCard);
             },
 
             spy: function (thought) {
