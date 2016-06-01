@@ -75,10 +75,26 @@ module.exports = {
 
                 let playedCard = t.find(me.hand, 'perk', thought.action);
 
+                unPeek(me.uuid, playedCard.mask);
+
                 return discard(me.hand, playedCard);
             },
-            debate: function (gameState, tar) {
-                //compare the highest card. hig card wins. low card loses
+
+            debate: function (thought) {
+
+                let me = findMe(true);
+                let target = player(thought.target);
+
+                //rule: baron cannot participate directly. remove BEFORE comparison
+                let playedCard = discard(me.hand, t.find(me.hand, 'perk', thought.action));
+
+                //rule: a tie allows both players to live
+                me.inPlay = t.toMask(me.hand) >= t.toMask(target.hand);
+                target.inPlay = t.toMask(me.hand) <= t.toMask(target.hand);
+
+                unPeek(me.uuid, playedCard.mask);
+
+                return playedCard;
             },
             protect: function (gameState, tar) {
                 //trigger isImmune Flag on player
