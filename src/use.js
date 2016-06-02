@@ -58,6 +58,7 @@ module.exports = {
                     return false;
 
                 target.inPlay = !(speculation & t.toMask(target.hand));
+                //target.discard
 
                 let playedCard = t.find(me.hand, 'perk', thought.action);
 
@@ -91,6 +92,7 @@ module.exports = {
                 //rule: a tie allows both players to live
                 me.inPlay = t.toMask(me.hand) >= t.toMask(target.hand);
                 target.inPlay = t.toMask(me.hand) <= t.toMask(target.hand);
+                //target.discard
 
                 unPeek(me.uuid, playedCard.mask);
 
@@ -111,9 +113,24 @@ module.exports = {
                 return playedCard;
             },
 
-            policy: function (gameState, tar) {
+            policy: function (thought) {
                 //make target discard
                 //for now, check for princess card. later, each card will have a event/discard handler
+
+                let me = findMe(true);
+
+                let target = player(thought.target);
+
+                unPeek(target.uuid, t.toMask(target.hand));
+
+                target.inPlay = !(princess & t.toMask(target.hand));
+
+                target.discard(); //todo: empty arg tosses entire hand (only one card in love letter)
+
+                if(target.inPlay)
+                    target.draw(); //already has knowledge of deck on player init
+
+                return discard(me.hand, t.find(me.hand, 'perk', thought.action));
             },
             mandate: function (gameState, tar) {
                 // switch cards with target

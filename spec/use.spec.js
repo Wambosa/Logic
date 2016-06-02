@@ -815,4 +815,176 @@ describe("a cardUse instance", function(){
             expect(players[1].peek["goku"]).toBeFalsy();
         });
     });
+
+    describe("when player POLICYs target foe", function(){
+
+        //todo: new Player(actions) needs a couple of functions(draw, discard) and knowledge of playPile and discardPile
+
+        function Player(uuid, hand){
+            var self = {};
+            self.uuid = uuid;
+            self.inPlay = true;
+            self.hand = hand || [];
+            self.peek = {};
+
+            self.configure = function(actions){
+                actions.forEach(function(a){
+                    self[a.name] = a.func.bind(self);
+                });
+                return self;
+            };
+
+            return self;
+        }
+
+        var _ = require('ramda');
+
+        var draw = _.curry(function(playPile){
+            return function(){
+                this.hand.push(playPile.pop());
+            };
+        });
+
+        //note: only supports a single card discard
+        var discard = _.curry(function(discardPile){
+            return function() {
+                discardPile.push(this.hand.pop());
+            };
+        });
+
+        //todo: add this test to debate and accuse WHEN !target.inPlay
+        it("then target player discards hand to discardPile", function(){
+
+            let playPile = [];
+            let discardPile = [];
+
+            let actions = [
+                {name: "draw", func: draw(playPile)},
+                {name: "discard", func: discard(discardPile)}
+            ];
+
+            let players = [
+                Player("goku", [{mask: 16, perk: "policy"}]).configure(actions),
+                Player("vegeta", [{mask: 128, perk: "favor"}]).configure(actions)
+            ];
+
+            let u = use.configure(null, players);
+
+            players[0].isTurn = true;
+            u.policy({
+                action: "policy",
+                target: "vegeta"
+            });
+
+            expect(discardPile[0]).toEqual({mask: 128, perk: "favor"});
+        });
+
+        it("then target player draws a new card immediately", function(){
+
+            let playPile = [{mask: 32, perk: "mandate"}];
+            let discardPile = [];
+
+            let actions = [
+                {name: "draw", func: draw(playPile)},
+                {name: "discard", func: discard(discardPile)}
+            ];
+
+            let players = [
+                Player("goku", [{mask: 16, perk: "policy"}]).configure(actions),
+                Player("vegeta", [{mask: 64, perk: "subvert"}]).configure(actions)
+            ];
+
+            let u = use.configure(null, players);
+
+            players[0].isTurn = true;
+            u.policy({
+                action: "policy",
+                target: "vegeta"
+            });
+
+            expect(players[1].hand[0]).toEqual({mask: 32, perk: "mandate"});
+        });
+
+        it("then target player's known card is removed from peek", function(){
+
+            let playPile = [{mask: 32, perk: "mandate"}];
+            let discardPile = [];
+
+            let actions = [
+                {name: "draw", func: draw(playPile)},
+                {name: "discard", func: discard(discardPile)}
+            ];
+
+            let players = [
+                Player("goku", [{mask: 16, perk: "policy"}]).configure(actions),
+                Player("vegeta", [{mask: 128, perk: "favor"}]).configure(actions)
+            ];
+
+            let u = use.configure(null, players);
+
+            players[0].isTurn = true;
+            players[0].peek["vegeta"] = 128;
+
+            u.policy({
+                action: "policy",
+                target: "vegeta"
+            });
+
+            expect(players[0].peek["vegeta"]).toBeFalsy();
+        });
+
+        it("then target player loses immediately if princess is discarded", function(){
+
+            let playPile = [{mask: 32, perk: "mandate"}];
+            let discardPile = [];
+
+            let actions = [
+                {name: "draw", func: draw(playPile)},
+                {name: "discard", func: discard(discardPile)}
+            ];
+
+            let players = [
+                Player("goku", [{mask: 16, perk: "policy"}]).configure(actions),
+                Player("vegeta", [{mask: 128, perk: "favor"}]).configure(actions)
+            ];
+
+            let u = use.configure(null, players);
+
+            players[0].isTurn = true;
+
+            u.policy({
+                action: "policy",
+                target: "vegeta"
+            });
+
+            expect(players[1].inPlay).toBeFalsy();
+        });
+
+        it("then target player does not draw a replacement card if NOT inPlay", function(){
+
+            let playPile = [{mask: 32, perk: "mandate"}];
+            let discardPile = [];
+
+            let actions = [
+                {name: "draw", func: draw(playPile)},
+                {name: "discard", func: discard(discardPile)}
+            ];
+
+            let players = [
+                Player("goku", [{mask: 16, perk: "policy"}]).configure(actions),
+                Player("vegeta", [{mask: 128, perk: "favor"}]).configure(actions)
+            ];
+
+            let u = use.configure(null, players);
+
+            players[0].isTurn = true;
+
+            u.policy({
+                action: "policy",
+                target: "vegeta"
+            });
+
+            expect(players[1].hand[0]).toBeFalsy();
+        });
+    });
 });

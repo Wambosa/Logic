@@ -36,7 +36,7 @@ module.exports = {
 
         // i actually want to do hamming weight for more complex games.
         // The hamming weight can only ever be 1 or 0 for this game.
-        // the preferred card decreases risk instead of reduces it.
+        // the preferred card decreases risk instead of increasing it.
 
         let bitAnd = math.bitAnd(target.subset(c), action.subset(c))._data[0];
         //todo: hamming weight * impact (currently -2)
