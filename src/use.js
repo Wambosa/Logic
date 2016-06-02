@@ -38,8 +38,8 @@ function discard(hand, card){
 module.exports = {
     configure: function (gameState, players) {
 
-        let player = _.curry(t.find)(players, null);
-        let stateOf = _.curry(t.find)(gameState, null);
+        let player = _.curry(t.find)(players, 'uuid');
+        let stateOf = _.curry(t.find)(gameState, 'uuid');
         let findMe = _.curry(t.find)(players, 'isTurn');
         let unPeek = _.curry(removePeek)(players);
 
@@ -51,7 +51,7 @@ module.exports = {
                 let target = player(thought.target);
                 let speculation = me.peek[target.uuid] || stateOf(thought.target).m[1][1];
 
-                //todo: instead of invalidating, either respeculate or change guess to random (if this is the only option)
+                //todo: instead of invalidating, either re-speculate or change guess to random (if this is the only option)
                 let illegal = speculation & guard; //rule: cannot accuse another guard
 
                 if (illegal)

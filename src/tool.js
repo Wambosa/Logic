@@ -56,11 +56,9 @@ module.exports = {
         });
     },
 
-    find: function (objList, property, key_) {
-        let key = arguments[arguments.length-1];
-        let prop = property || 'uuid';
+    find: function (objList, property, key) {
         return objList.find(function (obj) {
-            return obj[prop] === key;
+            return obj[property] === key;
         });
     }
 };

@@ -368,6 +368,7 @@ var players = [
     }
 ];
 
+//later: the gameLoop/gameMaster should be instantiable and configurable to run from a selection of different game rules
 function main(){
 
     let inGame = true;

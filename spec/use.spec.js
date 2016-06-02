@@ -1,8 +1,12 @@
 "use strict";
 
 var root = process.cwd();
+var _ = require('ramda');
 var rewire = require('rewire');
 var use = rewire(`${root}/src/use`);
+var Deck = require(`${root}/src/deck`);
+var Player = require(`${root}/src/player`);
+
 
 describe("a cardUse instance", function(){
 
@@ -818,27 +822,6 @@ describe("a cardUse instance", function(){
 
     describe("when player POLICYs target foe", function(){
 
-        //todo: new Player(actions) needs a couple of functions(draw, discard) and knowledge of playPile and discardPile
-
-        function Player(uuid, hand){
-            var self = {};
-            self.uuid = uuid;
-            self.inPlay = true;
-            self.hand = hand || [];
-            self.peek = {};
-
-            self.configure = function(actions){
-                actions.forEach(function(a){
-                    self[a.name] = a.func.bind(self);
-                });
-                return self;
-            };
-
-            return self;
-        }
-
-        var _ = require('ramda');
-
         var draw = _.curry(function(playPile){
             return function(){
                 this.hand.push(playPile.pop());
@@ -881,11 +864,11 @@ describe("a cardUse instance", function(){
 
         it("then target player draws a new card immediately", function(){
 
-            let playPile = [{mask: 32, perk: "mandate"}];
+            let playPile = Deck([{mask: 32, perk: "mandate"}]);
             let discardPile = [];
 
             let actions = [
-                {name: "draw", func: draw(playPile)},
+                {name: "draw", func: playPile.draw},
                 {name: "discard", func: discard(discardPile)}
             ];
 
