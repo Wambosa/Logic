@@ -1069,7 +1069,7 @@ describe("a cardUse instance", function(){
         });
     });
 
-    describe("when player MANDATEs", function(){
+    describe("when player MANDATEs target", function(){
 
         it("then player's hand becomes target hand", function(){
             let playPile = [];
@@ -1333,6 +1333,88 @@ describe("a cardUse instance", function(){
             });
 
             expect(players[2].peek["goku"]).not.toEqual(king);
+        });
+    });
+
+    describe("when player SUBVERTs self", function(){
+
+        it("then returns card played", function(){
+            let playPile = [];
+            let discardPile = [];
+
+            let actions = [
+                {name: "draw", func: draw(playPile)},
+                {name: "discard", func: discard(discardPile)}
+            ];
+
+            let players = [
+                Player("goku", [{mask: 64, perk: "subvert"}, {mask: 16, perk: "policy"}]).configure(actions),
+                Player("vegeta", [{mask: 128, perk: "favor"}]).configure(actions)
+            ];
+
+            let u = use.configure(null, players);
+
+            players[0].isTurn = true;
+
+            let result = u.subvert({
+                action: "subvert",
+                target: "vegeta"
+            });
+
+            expect(result).toEqual({mask: 64, perk: "subvert"});
+        });
+    });
+
+    describe("when player FAVORs self", function(){
+
+        it("then player loses", function(){
+            let playPile = [];
+            let discardPile = [];
+
+            let actions = [
+                {name: "draw", func: draw(playPile)},
+                {name: "discard", func: discard(discardPile)}
+            ];
+
+            let players = [
+                Player("goku", [{mask: 128, perk: "favor"}, {mask: 16, perk: "policy"}]).configure(actions),
+                Player("vegeta", [{mask: 32, perk: "mandate"}]).configure(actions)
+            ];
+
+            let u = use.configure(null, players);
+
+            players[0].isTurn = true;
+
+            u.favor({
+                action: "favor"
+            });
+
+            expect(players[0].inPlay).toBeFalsy();
+        });
+
+        it("then returns card played", function(){
+            let playPile = [];
+            let discardPile = [];
+
+            let actions = [
+                {name: "draw", func: draw(playPile)},
+                {name: "discard", func: discard(discardPile)}
+            ];
+
+            let players = [
+                Player("goku", [{mask: 128, perk: "favor"}, {mask: 16, perk: "policy"}]).configure(actions),
+                Player("vegeta", [{mask: 32, perk: "mandate"}]).configure(actions)
+            ];
+
+            let u = use.configure(null, players);
+
+            players[0].isTurn = true;
+
+            let result = u.favor({
+                action: "favor"
+            });
+
+            expect(result).toEqual({mask: 128, perk: "favor"});
         });
     });
 });
