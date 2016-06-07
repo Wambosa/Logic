@@ -19,6 +19,20 @@ describe("a cardUse instance", function(){
     const countess = 64;
     const princess = 128;
 
+    //todo: find a home for these player actions
+    var draw = _.curry(function(playPile){
+        return function(){
+            this.hand.push(playPile.pop());
+        };
+    });
+
+    //note: only supports a single card discard
+    var discard = _.curry(function(discardPile){
+        return function() {
+            discardPile.push(this.hand.pop());
+        };
+    });
+
     describe("when removing peek knowledge", function(){
 
         let removePeek = use.__get__('removePeek');
@@ -548,28 +562,20 @@ describe("a cardUse instance", function(){
     describe("when player DEBATEs with target foe", function(){
 
         it("then the player's baron is NOT used in the comparison", function(){
-            let players = [
-                {
-                    uuid: "goku",
-                    isTurn: true,
-                    inPlay: true,
-                    hand: [
-                        {mask: 1, perk: "accuse"},
-                        {mask: 4, perk: "debate"}
-                    ],
-                    peek: {}
-                },
-                {
-                    uuid: "vegeta",
-                    inPlay: true,
-                    hand: [
-                        {mask: 2, perk: "spy"}
-                    ],
-                    peek: {
-                        goku: 4
-                    }
-                }
+            let playPile = [];
+            let discardPile = [];
+
+            let actions = [
+                {name: "draw", func: draw(playPile)},
+                {name: "discard", func: discard(discardPile)}
             ];
+
+            let players = [
+                Player("goku", [{mask: 1, perk: "accuse"}, {mask: 4, perk: "debate"}]).configure(actions),
+                Player("vegeta", [{mask: 2, perk: "spy"}]).configure(actions)
+            ];
+
+            players[0].isTurn = true;
 
             let u = use.configure(null, players);
 
@@ -582,26 +588,20 @@ describe("a cardUse instance", function(){
         });
 
         it("then high card wins", function(){
-            let players = [
-                {
-                    uuid: "goku",
-                    isTurn: true,
-                    inPlay: true,
-                    hand: [
-                        {mask: 16, perk: "policy"},
-                        {mask: 4, perk: "debate"}
-                    ],
-                    peek: {}
-                },
-                {
-                    uuid: "vegeta",
-                    inPlay: true,
-                    hand: [
-                        {mask: 2, perk: "spy"}
-                    ],
-                    peek: {}
-                }
+            let playPile = [];
+            let discardPile = [];
+
+            let actions = [
+                {name: "draw", func: draw(playPile)},
+                {name: "discard", func: discard(discardPile)}
             ];
+
+            let players = [
+                Player("goku", [{mask: 16, perk: "policy"}, {mask: 4, perk: "debate"}]).configure(actions),
+                Player("vegeta", [{mask: 4, perk: "debate"}]).configure(actions)
+            ];
+
+            players[0].isTurn = true;
 
             let u = use.configure(null, players);
 
@@ -614,28 +614,20 @@ describe("a cardUse instance", function(){
         });
 
         it("then only one player survives if NOT a tie...", function(){
-            let players = [
-                {
-                    uuid: "goku",
-                    isTurn: true,
-                    inPlay: true,
-                    hand: [
-                        {mask: 1, perk: "accuse"},
-                        {mask: 4, perk: "debate"}
-                    ],
-                    peek: {}
-                },
-                {
-                    uuid: "vegeta",
-                    inPlay: true,
-                    hand: [
-                        {mask: 2, perk: "spy"}
-                    ],
-                    peek: {
-                        goku: 4
-                    }
-                }
+            let playPile = [];
+            let discardPile = [];
+
+            let actions = [
+                {name: "draw", func: draw(playPile)},
+                {name: "discard", func: discard(discardPile)}
             ];
+
+            let players = [
+                Player("goku", [{mask: 1, perk: "accuse"}, {mask: 4, perk: "debate"}]).configure(actions),
+                Player("vegeta", [{mask: 2, perk: "spy"}]).configure(actions)
+            ];
+
+            players[0].isTurn = true;
 
             let u = use.configure(null, players);
 
@@ -648,28 +640,20 @@ describe("a cardUse instance", function(){
         });
 
         it("then both player and foe survive if a tie...", function(){
-            let players = [
-                {
-                    uuid: "goku",
-                    isTurn: true,
-                    inPlay: true,
-                    hand: [
-                        {mask: 2, perk: "spy"},
-                        {mask: 4, perk: "debate"}
-                    ],
-                    peek: {}
-                },
-                {
-                    uuid: "vegeta",
-                    inPlay: true,
-                    hand: [
-                        {mask: 2, perk: "spy"}
-                    ],
-                    peek: {
-                        goku: 4
-                    }
-                }
+            let playPile = [];
+            let discardPile = [];
+
+            let actions = [
+                {name: "draw", func: draw(playPile)},
+                {name: "discard", func: discard(discardPile)}
             ];
+
+            let players = [
+                Player("goku", [{mask: 2, perk: "spy"}, {mask: 4, perk: "debate"}]).configure(actions),
+                Player("vegeta", [{mask: 2, perk: "spy"}]).configure(actions)
+            ];
+
+            players[0].isTurn = true;
 
             let u = use.configure(null, players);
 
@@ -682,65 +666,99 @@ describe("a cardUse instance", function(){
         });
 
         it("when completed successfully, returns the card played", function(){
+            let playPile = [];
+            let discardPile = [];
+
+            let actions = [
+                {name: "draw", func: draw(playPile)},
+                {name: "discard", func: discard(discardPile)}
+            ];
 
             let players = [
-                {
-                    uuid: "goku",
-                    inPlay: true,
-                    isTurn: true,
-                    hand: [
-                        {mask: 1, perk: "accuse"},
-                        {mask: 4, perk: "debate"}
-                    ],
-                    peek: {}
-                },
-                {
-                    uuid: "vegeta",
-                    inPlay: true,
-                    hand: [
-                        {mask: 4, perk: "debate"}
-                    ],
-                    peek: {}
-                }
+                Player("goku", [{mask: 1, perk: "accuse"}, {mask: 4, perk: "debate"}]).configure(actions),
+                Player("vegeta", [{mask: 4, perk: "debate"}]).configure(actions)
             ];
+
+            players[0].isTurn = true;
 
             let u = use.configure(null, players);
 
-            let discard = u.debate({
+            let result = u.debate({
                 target: "vegeta",
                 action: "debate"
             });
 
-            expect(discard).toEqual({mask:4, perk: "debate"});
+            expect(result).toEqual({mask:4, perk: "debate"});
         });
 
-        xit("then losing player discards hand to discardPile", function(){
+        it("then losing player discards hand to discardPile", function(){
+            let playPile = [];
+            let discardPile = [];
+
+            let actions = [
+                {name: "draw", func: draw(playPile)},
+                {name: "discard", func: discard(discardPile)}
+            ];
+
+            let players = [
+                Player("goku", [{mask: 4, perk: "debate"}, {mask: 16, perk: "policy"}]).configure(actions),
+                Player("vegeta", [{mask: 32, perk: "mandate"}]).configure(actions)
+            ];
+
+            let u = use.configure(null, players);
+
+            players[0].isTurn = true;
+
+            u.debate({
+                action: "debate",
+                target: "vegeta"
+            });
+
+            expect(discardPile[0]).toEqual({mask: 16, perk: "policy"});
         });
 
-        xit("then losing target discards hand to discardPile", function(){
+        it("then losing target discards hand to discardPile", function(){
+            let playPile = [];
+            let discardPile = [];
+
+            let actions = [
+                {name: "draw", func: draw(playPile)},
+                {name: "discard", func: discard(discardPile)}
+            ];
+
+            let players = [
+                Player("goku", [{mask: 32, perk: "mandate"}, {mask: 4, perk: "debate"}]).configure(actions),
+                Player("vegeta", [{mask: 8, perk: "protect"}]).configure(actions)
+            ];
+
+            players[0].isTurn = true;
+
+            let u = use.configure(null, players);
+
+            u.debate({
+                action: "debate",
+                target: "vegeta"
+            });
+
+            expect(discardPile[0]).toEqual({mask: 8, perk: "protect"});
         });
 
         it("implements unPeek", function(){
-            let players = [
-                {
-                    uuid: "goku",
-                    isTurn: true,
-                    hand: [
-                        {mask: 1, perk: "accuse"},
-                        {mask: 4, perk: "debate"}
-                    ],
-                    peek: {}
-                },
-                {
-                    uuid: "vegeta",
-                    hand: [
-                        {mask: 16, perk: "policy"}
-                    ],
-                    peek: {
-                        goku: 4
-                    }
-                }
+            let playPile = [];
+            let discardPile = [];
+
+            let actions = [
+                {name: "draw", func: draw(playPile)},
+                {name: "discard", func: discard(discardPile)}
             ];
+
+            let players = [
+                Player("goku", [{mask: 1, perk: "accuse"}, {mask: 4, perk: "debate"}]).configure(actions),
+                Player("vegeta", [{mask: 16, perk: "policy"}]).configure(actions)
+            ];
+
+            players[0].isTurn = true;
+            players[1].peek["goku"] = 4;
 
             let u = use.configure(null, players);
 
@@ -837,20 +855,6 @@ describe("a cardUse instance", function(){
 
             expect(players[1].peek["goku"]).toBeFalsy();
         });
-    });
-
-    //todo: find a home for these player actions
-    var draw = _.curry(function(playPile){
-        return function(){
-            this.hand.push(playPile.pop());
-        };
-    });
-
-    //note: only supports a single card discard
-    var discard = _.curry(function(discardPile){
-        return function() {
-            discardPile.push(this.hand.pop());
-        };
     });
 
     describe("when player POLICYs target", function(){

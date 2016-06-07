@@ -92,7 +92,17 @@ module.exports = {
                 //rule: a tie allows both players to live
                 me.inPlay = t.toMask(me.hand) >= t.toMask(target.hand);
                 target.inPlay = t.toMask(me.hand) <= t.toMask(target.hand);
-                //todo: target.discard
+
+                //todo: this pattern appears too often, bake the unpeek into discard action or broadcast event.
+                if(!me.inPlay) {
+                    unPeek(me.uuid, t.toMask(me.hand));
+                    me.discard();
+                }
+
+                if(!target.inPlay) {
+                    unPeek(target.uuid, t.toMask(target.hand));
+                    target.discard();
+                }
 
                 unPeek(me.uuid, playedCard.mask);
 
