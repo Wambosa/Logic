@@ -92,7 +92,7 @@ module.exports = {
                 //rule: a tie allows both players to live
                 me.inPlay = t.toMask(me.hand) >= t.toMask(target.hand);
                 target.inPlay = t.toMask(me.hand) <= t.toMask(target.hand);
-                //target.discard
+                //todo: target.discard
 
                 unPeek(me.uuid, playedCard.mask);
 
@@ -114,12 +114,17 @@ module.exports = {
             },
 
             policy: function (thought) {
-                //make target discard
-                //for now, check for princess card. later, each card will have a event/discard handler
 
                 let me = findMe(true);
 
                 let target = player(thought.target);
+
+                let illegal = countess & t.toMask(me.hand);
+
+                if(illegal) //todo: will likely need an error object to send up to client
+                    return false;
+
+                //todo: consider unPeek being a part of discard action
 
                 unPeek(target.uuid, t.toMask(target.hand));
 
@@ -130,23 +135,60 @@ module.exports = {
                 if(target.inPlay)
                     target.draw(); //already has knowledge of deck on player init
 
+                let playedCard = discard(me.hand, t.find(me.hand, 'perk', thought.action));
+                unPeek(me.uuid, playedCard.mask);
+                return playedCard;
+            },
+
+            mandate: function (thought) {
+
+                let me = findMe(true);
+
+                let target = player(thought.target);
+
+                let illegal = countess & t.toMask(me.hand);
+
+                if(illegal)
+                    return false;
+
+                let playedCard = discard(me.hand, t.find(me.hand, 'perk', thought.action));
+                unPeek(me.uuid, playedCard.mask);
+
+                let myHand = me.hand.slice(0);
+                let tarHand = target.hand.slice(0);
+
+                let mePeekKnowledge = t.toMask(myHand);
+                let tarPeekKnowledge = t.toMask(tarHand);
+
+                me.hand = tarHand;
+                target.hand = myHand;
+
+                //todo: move peek knowledge that other players may posses
+                players.forEach(function(p){
+                    let peekMe = p.peek[me.uuid];
+                    let peekTar = p.peek[target.uuid];
+                    p.peek[me.uuid] = peekTar;
+                    p.peek[target.uuid] = peekMe;
+                });
+
+                //let the involved parties gain peek knowledge
+                me.peek[target.uuid] = tarPeekKnowledge;
+                target.peek[me.uuid] = mePeekKnowledge;
+
+                return playedCard;
+            },
+
+            subvert: function (thought) {
+                //note: this card flags the others as unplayable so that the users is simply forced to play this
+                let me = findMe(true);
                 return discard(me.hand, t.find(me.hand, 'perk', thought.action));
             },
-            mandate: function (gameState, tar) {
-                // switch cards with target
-                // move your hand to temp
-                // set me.hand to target.hand
-                // set me.peek to temp
-                // set target.hand to temp
-            },
-            subvert: function (gameState, tar) {
-                //this one requires an event handler of sorts?
-                // maybe this card flags the others as unplayable so that the users is simply forced to play this
-                // i dont want to "auto" play this card. otherwise, the lack of delay is telling
-            },
-            favor: function (gameState, tar) {
+
+            favor: function (thought) {
                 // oddly enough. just makes the user lose.
-                // if this card is played, then set me.inPlay = false
+                let me = findMe(true);
+                me.inPlay = false;
+                return discard(me.hand, t.find(me.hand, 'perk', thought.action));
             }
         };
     }

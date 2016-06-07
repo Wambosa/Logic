@@ -10,6 +10,15 @@ var Player = require(`${root}/src/player`);
 
 describe("a cardUse instance", function(){
 
+    const guard = 1;
+    const priest = 2;
+    const baron = 4;
+    const handmaiden = 8;
+    const prince = 16;
+    const king = 32;
+    const countess = 64;
+    const princess = 128;
+
     describe("when removing peek knowledge", function(){
 
         let removePeek = use.__get__('removePeek');
@@ -142,6 +151,10 @@ describe("a cardUse instance", function(){
             });
 
             expect(players[1].inPlay).toBeFalsy();
+        });
+
+        xit("when the guess is correct, then target discards hand", function(){
+            //most likely better to handle this sort of "i lost" event somewhere else.
         });
 
         it("when peek knowledge is had, then peek knowledge is used", function(){
@@ -701,6 +714,12 @@ describe("a cardUse instance", function(){
             expect(discard).toEqual({mask:4, perk: "debate"});
         });
 
+        xit("then losing player discards hand to discardPile", function(){
+        });
+
+        xit("then losing target discards hand to discardPile", function(){
+        });
+
         it("implements unPeek", function(){
             let players = [
                 {
@@ -820,23 +839,23 @@ describe("a cardUse instance", function(){
         });
     });
 
-    describe("when player POLICYs target foe", function(){
+    //todo: find a home for these player actions
+    var draw = _.curry(function(playPile){
+        return function(){
+            this.hand.push(playPile.pop());
+        };
+    });
 
-        var draw = _.curry(function(playPile){
-            return function(){
-                this.hand.push(playPile.pop());
-            };
-        });
+    //note: only supports a single card discard
+    var discard = _.curry(function(discardPile){
+        return function() {
+            discardPile.push(this.hand.pop());
+        };
+    });
 
-        //note: only supports a single card discard
-        var discard = _.curry(function(discardPile){
-            return function() {
-                discardPile.push(this.hand.pop());
-            };
-        });
+    describe("when player POLICYs target", function(){
 
-        //todo: add this test to debate and accuse WHEN !target.inPlay
-        it("then target player discards hand to discardPile", function(){
+        it("then target discards hand to discardPile", function(){
 
             let playPile = [];
             let discardPile = [];
@@ -862,7 +881,7 @@ describe("a cardUse instance", function(){
             expect(discardPile[0]).toEqual({mask: 128, perk: "favor"});
         });
 
-        it("then target player draws a new card immediately", function(){
+        it("then target draws a new card immediately", function(){
 
             let playPile = Deck([{mask: 32, perk: "mandate"}]);
             let discardPile = [];
@@ -888,7 +907,7 @@ describe("a cardUse instance", function(){
             expect(players[1].hand[0]).toEqual({mask: 32, perk: "mandate"});
         });
 
-        it("then target player's known card is removed from peek", function(){
+        it("then target's known card is removed from peek", function(){
 
             let playPile = [{mask: 32, perk: "mandate"}];
             let discardPile = [];
@@ -916,7 +935,7 @@ describe("a cardUse instance", function(){
             expect(players[0].peek["vegeta"]).toBeFalsy();
         });
 
-        it("then target player loses immediately if princess is discarded", function(){
+        it("then target loses immediately if princess is discarded", function(){
 
             let playPile = [{mask: 32, perk: "mandate"}];
             let discardPile = [];
@@ -943,7 +962,7 @@ describe("a cardUse instance", function(){
             expect(players[1].inPlay).toBeFalsy();
         });
 
-        it("then target player does not draw a replacement card if NOT inPlay", function(){
+        it("then target does not draw a replacement card target is NOT inPlay", function(){
 
             let playPile = [{mask: 32, perk: "mandate"}];
             let discardPile = [];
@@ -968,6 +987,352 @@ describe("a cardUse instance", function(){
             });
 
             expect(players[1].hand[0]).toBeFalsy();
+        });
+
+        it("then cannot be played if countess is in hand", function(){
+            let playPile = [];
+            let discardPile = [];
+
+            let actions = [
+                {name: "draw", func: draw(playPile)},
+                {name: "discard", func: discard(discardPile)}
+            ];
+
+            let players = [
+                Player("goku", [{mask: 16, perk: "policy"}, {mask: 64, perk: "subvert"}]).configure(actions),
+                Player("vegeta", [{mask: 128, perk: "favor"}]).configure(actions)
+            ];
+
+            let u = use.configure(null, players);
+
+            players[0].isTurn = true;
+
+            let result = u.policy({
+                action: "policy",
+                target: "vegeta"
+            });
+
+            expect(result).toBeFalsy();
+        });
+
+        it("then returns played card on success", function(){
+            let playPile = [];
+            let discardPile = [];
+
+            let actions = [
+                {name: "draw", func: draw(playPile)},
+                {name: "discard", func: discard(discardPile)}
+            ];
+
+            let players = [
+                Player("goku", [{mask: 16, perk: "policy"}]).configure(actions),
+                Player("vegeta", [{mask: 128, perk: "favor"}]).configure(actions)
+            ];
+
+            let u = use.configure(null, players);
+
+            players[0].isTurn = true;
+
+            let result = u.policy({
+                action: "policy",
+                target: "vegeta"
+            });
+
+            expect(result).toEqual({mask: 16, perk: "policy"});
+        });
+
+        it("implements unPeek on player", function(){
+            let playPile = [];
+            let discardPile = [];
+
+            let actions = [
+                {name: "draw", func: draw(playPile)},
+                {name: "discard", func: discard(discardPile)}
+            ];
+
+            let players = [
+                Player("goku", [{mask: 16, perk: "policy"}, {mask: 2, perk: "spy"}]).configure(actions),
+                Player("vegeta", [{mask: 128, perk: "favor"}]).configure(actions),
+                Player("trunks", [{mask: 64, perk: "subvert"}]).configure(actions)
+            ];
+
+            let u = use.configure(null, players);
+
+            players[2].peek["goku"] = 16;
+            players[0].isTurn = true;
+            u.policy({
+                action: "policy",
+                target: "vegeta"
+            });
+
+            expect(players[2].peek["goku"]).toBeFalsy();
+        });
+    });
+
+    describe("when player MANDATEs", function(){
+
+        it("then player's hand becomes target hand", function(){
+            let playPile = [];
+            let discardPile = [];
+
+            let actions = [
+                {name: "draw", func: draw(playPile)},
+                {name: "discard", func: discard(discardPile)}
+            ];
+
+            let players = [
+                Player("goku", [{mask: 32, perk: "mandate"}, {mask: 1, perk: "accuse"}]).configure(actions),
+                Player("vegeta", [{mask: 128, perk: "favor"}]).configure(actions)
+            ];
+
+            let u = use.configure(null, players);
+
+            players[0].isTurn = true;
+            u.mandate({
+                action: "mandate",
+                target: "vegeta"
+            });
+
+            expect(players[0].hand[0]).toEqual({mask: 128, perk: "favor"});
+        });
+
+        it("then target's hand becomes player hand", function(){
+            let playPile = [];
+            let discardPile = [];
+
+            let actions = [
+                {name: "draw", func: draw(playPile)},
+                {name: "discard", func: discard(discardPile)}
+            ];
+
+            let players = [
+                Player("goku", [{mask: 32, perk: "mandate"}, {mask: 1, perk: "accuse"}]).configure(actions),
+                Player("vegeta", [{mask: 128, perk: "favor"}]).configure(actions)
+            ];
+
+            let u = use.configure(null, players);
+
+            players[0].isTurn = true;
+            u.mandate({
+                action: "mandate",
+                target: "vegeta"
+            });
+
+            expect(players[1].hand[0]).toEqual({mask: 1, perk: "accuse"});
+        });
+
+        it("then player has peek knowledge of target hand", function(){
+            let playPile = [];
+            let discardPile = [];
+
+            let actions = [
+                {name: "draw", func: draw(playPile)},
+                {name: "discard", func: discard(discardPile)}
+            ];
+
+            let players = [
+                Player("goku", [{mask: 32, perk: "mandate"}, {mask: 1, perk: "guard"}]).configure(actions),
+                Player("vegeta", [{mask: 128, perk: "favor"}]).configure(actions)
+            ];
+
+            let u = use.configure(null, players);
+
+            players[0].isTurn = true;
+            u.mandate({
+                action: "mandate",
+                target: "vegeta"
+            });
+
+            expect(players[0].peek["vegeta"]).toEqual(princess);
+        });
+
+        it("then target has peek knowledge of player hand", function(){
+            let playPile = [];
+            let discardPile = [];
+
+            let actions = [
+                {name: "draw", func: draw(playPile)},
+                {name: "discard", func: discard(discardPile)}
+            ];
+
+            let players = [
+                Player("goku", [{mask: 32, perk: "mandate"}, {mask: 2, perk: "spy"}]).configure(actions),
+                Player("vegeta", [{mask: 128, perk: "favor"}]).configure(actions)
+            ];
+
+            let u = use.configure(null, players);
+
+            players[0].isTurn = true;
+            u.mandate({
+                action: "mandate",
+                target: "vegeta"
+            });
+
+            expect(players[1].peek["goku"]).toEqual(2);
+        });
+
+        it("then peek knowledge of player is transferred correctly to other opponents", function(){
+            let playPile = [];
+            let discardPile = [];
+
+            let actions = [
+                {name: "draw", func: draw(playPile)},
+                {name: "discard", func: discard(discardPile)}
+            ];
+
+            let players = [
+                Player("goku", [{mask: 32, perk: "mandate"}, {mask: 1, perk: "guard"}]).configure(actions),
+                Player("vegeta", [{mask: 128, perk: "favor"}]).configure(actions),
+                Player("trunks", [{mask: 64, perk: "subvert"}]).configure(actions)
+            ];
+
+            let u = use.configure(null, players);
+
+            players[0].isTurn = true;
+            players[2].peek["goku"] = 1;
+
+            u.mandate({
+                action: "mandate",
+                target: "vegeta"
+            });
+
+            expect(players[2].peek["vegeta"]).toEqual(1);
+        });
+
+        it("then peek knowledge of target is transferred correctly to other opponents", function(){
+            let playPile = [];
+            let discardPile = [];
+
+            let actions = [
+                {name: "draw", func: draw(playPile)},
+                {name: "discard", func: discard(discardPile)}
+            ];
+
+            let players = [
+                Player("goku", [{mask: 32, perk: "mandate"}, {mask: 1, perk: "guard"}]).configure(actions),
+                Player("vegeta", [{mask: 128, perk: "favor"}]).configure(actions),
+                Player("trunks", [{mask: 64, perk: "subvert"}]).configure(actions)
+            ];
+
+            let u = use.configure(null, players);
+
+            players[0].isTurn = true;
+            players[2].peek["vegeta"] = 128;
+
+            u.mandate({
+                action: "mandate",
+                target: "vegeta"
+            });
+
+            expect(players[2].peek["goku"]).toEqual(128);
+        });
+
+        it("then cannot be played if countess is in hand", function(){
+            let playPile = [];
+            let discardPile = [];
+
+            let actions = [
+                {name: "draw", func: draw(playPile)},
+                {name: "discard", func: discard(discardPile)}
+            ];
+
+            let players = [
+                Player("goku", [{mask: 32, perk: "mandate"}, {mask: 64, perk: "subvert"}]).configure(actions),
+                Player("vegeta", [{mask: 128, perk: "favor"}]).configure(actions)
+            ];
+
+            let u = use.configure(null, players);
+
+            players[0].isTurn = true;
+
+            let result = u.mandate({
+                action: "mandate",
+                target: "vegeta"
+            });
+
+            expect(result).toBeFalsy();
+        });
+
+        it("then returns played card on success", function(){
+            let playPile = [];
+            let discardPile = [];
+
+            let actions = [
+                {name: "draw", func: draw(playPile)},
+                {name: "discard", func: discard(discardPile)}
+            ];
+
+            let players = [
+                Player("goku", [{mask: 32, perk: "mandate"}, {mask: 16, perk: "policy"}]).configure(actions),
+                Player("vegeta", [{mask: 128, perk: "favor"}]).configure(actions)
+            ];
+
+            let u = use.configure(null, players);
+
+            players[0].isTurn = true;
+
+            let result = u.mandate({
+                action: "mandate",
+                target: "vegeta"
+            });
+
+            expect(result).toEqual({mask: 32, perk: "mandate"});
+        });
+
+        it("implements unpeek on player", function(){
+            let playPile = [];
+            let discardPile = [];
+
+            let actions = [
+                {name: "draw", func: draw(playPile)},
+                {name: "discard", func: discard(discardPile)}
+            ];
+
+            let players = [
+                Player("goku", [{mask: 32, perk: "mandate"}, {mask: 16, perk: "policy"}]).configure(actions),
+                Player("vegeta", [{mask: 128, perk: "favor"}]).configure(actions),
+                Player("trunks", [{mask: 64, perk: "subvert"}]).configure(actions)
+            ];
+
+            let u = use.configure(null, players);
+
+            players[0].isTurn = true;
+            players[2].peek["goku"] = 32;
+
+            u.mandate({
+                action: "mandate",
+                target: "vegeta"
+            });
+
+            expect(players[2].peek["goku"]).toBeFalsy();
+        });
+
+        it("then does not accidentally place discard in peek knowledge", function(){
+            let playPile = [];
+            let discardPile = [];
+
+            let actions = [
+                {name: "draw", func: draw(playPile)},
+                {name: "discard", func: discard(discardPile)}
+            ];
+
+            let players = [
+                Player("goku", [{mask: 32, perk: "mandate"}, {mask: 16, perk: "policy"}]).configure(actions),
+                Player("vegeta", [{mask: 128, perk: "favor"}]).configure(actions),
+                Player("trunks", [{mask: 64, perk: "subvert"}]).configure(actions)
+            ];
+
+            let u = use.configure(null, players);
+
+            players[0].isTurn = true;
+            players[2].peek["goku"] = 16;
+
+            u.mandate({
+                action: "mandate",
+                target: "vegeta"
+            });
+
+            expect(players[2].peek["goku"]).not.toEqual(king);
         });
     });
 });

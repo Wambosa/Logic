@@ -16,5 +16,5 @@ module.exports = function(cards, isStatic){
         }
     };
 
-    return self;//todo: honor is static with object.freeze
+    return self;//todo: honor isStatic with object.freeze
 };
