@@ -1,43 +1,49 @@
 "use strict";
 
+function random(upper, lower) {
+    upper++;
+    lower = lower || 0;
+    return Math.floor((Math.random() * (upper - lower)) + lower);
+}
+
+function dedup(list, property_) {
+    let prop = property_ || 'mask';
+    return list.slice(0).sort(function(a, b){
+        return a[prop] > b[prop];
+    }).filter(function (item, pos, ary) {
+        return !pos || item[prop] != ary[pos - 1][prop];
+    });
+}
+
+function simplify(list, field_){
+    let field = field_ || 'mask';
+    return list.map(function(i){
+        return i[field];
+    });
+}
+
 module.exports = {
 
-    random: function (upper, lower) {
-        upper++;
-        lower = lower || 0;
-        return Math.floor((Math.random() * (upper - lower)) + lower);
-    },
+    random: random,
 
-    simplify: function(list, field_){
-        let field = field_ || 'mask';
-        return list.map(function(i){
-            return i[field];
-        });
-    },
+    simplify: simplify,
 
-    dedup: function (list, property_) {
-        let prop = property_ || 'mask';
-        return list.slice(0).sort(function(a, b){
-            return a[prop] > b[prop];
-        }).filter(function (item, pos, ary) {
-            return !pos || item[prop] != ary[pos - 1][prop];
-        });
-    },
+    dedup: dedup,
 
     toMask: function(list, field_){
         let field = field_ || 'mask';
-        return this.simplify(this.dedup(list), field).reduce(function(prev, cur){
+        return simplify(dedup(list), field).reduce(function(prev, cur){
             return prev + cur;
         });
     },
 
     shuffle: function (list_) {
-        let list = list_.splice(0);
+        let list = list_.slice(0);
         let count = list.length;
         let swap = 0;
 
         for (let i = count-1; i > -1; i--) {
-            swap = this.random(i);
+            swap = random(i);
             list[i] = list.splice(swap, 1, list[i])[0];
         }
 

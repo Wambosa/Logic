@@ -1,9 +1,11 @@
 "use strict";
 
-var tool = require('src/tool');
-var ai = require('src/ai');
+var _ = require('ramda');
+var ai = require('./src/ai');
+var tool = require('./src/tool');
+var Use = require('./src/use');
+var Player = require('./src/player');
 
-var random = tool.random;
 var toMask = tool.toMask;
 var toMind = tool.toMind;
 var shuffle = tool.shuffle;
@@ -28,7 +30,7 @@ const king = 32;
 const countess = 64;
 const princess = 128;
 
-const startDeck = [
+const startDeck = Object.freeze([
     {mask: guard, name: "Guard", perk: "accuse" },
     {mask: guard, name: "Guard", perk: "accuse" },
     {mask: guard, name: "Guard", perk: "accuse" },
@@ -45,7 +47,7 @@ const startDeck = [
     {mask: king, name: "King", perk: "mandate" },
     {mask: countess, name: "Countess", perk: "subvert" },
     {mask: princess, name: "Princess", perk: "favor" }
-];
+]);
 
 //later: these ideals will be some kind of datasource stored elsewhere in a nosql or json
 var shon = {
@@ -198,65 +200,65 @@ var rand = {
     "accuse": {
         mask: guard,
         t: 2,
-        m: [[random(3,-1), random(3,-1)],
-            [random(128, 0), random(128, 0)],
-            [random(3, -1), random(8, -1)]
+        m: [[tool.random(3,-1), tool.random(3,-1)],
+            [tool.random(128, 0), tool.random(128, 0)],
+            [tool.random(3, -1), tool.random(8, -1)]
         ]
     },
     "spy": {
         mask: priest,
         t: 2,
-        m: [[random(3,-1), random(3,-1)],
-            [random(128, 0), random(128, 0)],
-            [random(3, -1), random(8, -1)]
+        m: [[tool.random(3,-1), tool.random(3,-1)],
+            [tool.random(128, 0), tool.random(128, 0)],
+            [tool.random(3, -1), tool.random(8, -1)]
         ]
     },
     "debate": {
         mask: baron,
         t: 2,
-        m: [[random(3,-1), random(3,-1)],
-            [random(128, 0), random(128, 0)],
-            [random(3, -1), random(8, -1)]
+        m: [[tool.random(3,-1), tool.random(3,-1)],
+            [tool.random(128, 0), tool.random(128, 0)],
+            [tool.random(3, -1), tool.random(8, -1)]
         ]
     },
     "protect": {
         mask: handmaiden,
         t: 1,
-        m: [[random(3,-1), random(3,-1)],
-            [random(128, 0), random(128, 0)],
-            [random(3, -1), random(8, -1)]
+        m: [[tool.random(3,-1), tool.random(3,-1)],
+            [tool.random(128, 0), tool.random(128, 0)],
+            [tool.random(3, -1), tool.random(8, -1)]
         ]
     },
     "policy": {
         mask: prince,
         t: 3,
-        m: [[random(3,-1), random(3,-1)],
-            [random(128, 0), random(128, 0)],
-            [random(3, -1), random(8, -1)]
+        m: [[tool.random(3,-1), tool.random(3,-1)],
+            [tool.random(128, 0), tool.random(128, 0)],
+            [tool.random(3, -1), tool.random(8, -1)]
         ]
     },
     "mandate": {
         mask: king,
         t: 2,
-        m: [[random(3,-1), random(3,-1)],
-            [random(128, 0), random(128, 0)],
-            [random(3, -1), random(8, -1)]
+        m: [[tool.random(3,-1), tool.random(3,-1)],
+            [tool.random(128, 0), tool.random(128, 0)],
+            [tool.random(3, -1), tool.random(8, -1)]
         ]
     },
     "subvert":{
         mask: countess,
         t: 1,
-        m: [[random(3,-1), random(3,-1)],
-            [random(128, 0), random(128, 0)],
-            [random(3, -1), random(8, -1)]
+        m: [[tool.random(3,-1), tool.random(3,-1)],
+            [tool.random(128, 0), tool.random(128, 0)],
+            [tool.random(3, -1), tool.random(8, -1)]
         ]
     },
     "favor": {
         mask: princess,
         t: 1,
-        m: [[random(3,-1), random(3,-1)],
-            [random(128, 0), random(128, 0)],
-            [random(3, -1), random(8, -1)]
+        m: [[tool.random(3,-1), tool.random(3,-1)],
+            [tool.random(128, 0), tool.random(128, 0)],
+            [tool.random(3, -1), tool.random(8, -1)]
         ]
     }
 };
@@ -334,79 +336,80 @@ var glen = {
     }
 };
 
-//additionally, the player roster will need to be passed to the program in order to initiate a match.
-//i do want a npc generator later on however in the case of no human player matches
-var players = [
-    {
-        uuid: "Shon",
-        ideals: shon,
-        wins: 0,
-        hand: [],
-        peek: {},
-        discard: 0
-    },{
-        uuid: "Atlas",
-        ideals: atlas,
-        wins: 0,
-        hand: [],
-        peek: {},
-        discard: 0
-    },{
-        uuid: "Jack Daniels",
-        ideals: rand,
-        wins: 0,
-        hand: [],
-        peek: {},
-        discard: 0
-    }, {
-        uuid: "Glen Levit",
-        ideals: glen,
-        wins: 0,
-        hand: [],
-        peek: {},
-        discard: 0
-    }
-];
-
 //later: the gameLoop/gameMaster should be instantiable and configurable to run from a selection of different game rules
-function main(){
+function main(todoArgs){
 
+    var stashEvents = [];
+    let gameState = {}; //I need to determine if this is truly needed or not. all the tests get along without it except accuse
     let inGame = true;
+    let playerCount = 4;
 
-    var playPile = shuffle(startDeck); //todo: new Deck()
-    stashEvents.push(Object.create(playPile));//todo: stashObject nosql q system
-    var discardPile = []; //added property "user" = the person's uuid that used it
+    let playPile = shuffle(startDeck); //todo: new Deck()
+    let discardPile = playPile.splice(0, playerCount === 2 && 4 || 1);
+
+    //todo: stashObject nosql q system
+    stashEvents.push(Object.create(playPile));
+    stashEvents.push(Object.create(discardPile));
+
+    let draw = _.curry(function(playPile){
+        return function(){
+            this.hand.push(playPile.pop());
+        };
+    });
+
+    //note: only supports a single card discard
+    let discard = _.curry(function(discardPile){
+        return function() {
+            this.hand[this.hand.length-1].user = this.uuid;
+            discardPile.push(this.hand.pop());
+        };
+    });
+
+    let actions = [
+        {name: "draw", func: draw(playPile)},
+        {name: "discard", func: discard(discardPile)}
+    ];
+
+    let players = [
+        Player("shon", [], shon).configure(actions),
+        Player("atlas", [], atlas).configure(actions),
+        Player("jack", [], rand).configure(actions),
+        Player("glen", [], glen).configure(actions)
+    ];
 
     players.forEach(function(player){
-        player.hand.push(playPile.pop());
-        player.inPlay = true;
+        player.draw();
     });
 
     stashEvents.push(Object.create(players));
 
+    //these three can go in gamestate
     var cur = 0;
     var turns = 0;
     var round = 0;
 
+    var use = Use.configure(gameState, players);
+
     while (inGame){
 
-        //todo: beginTurn()
         let me = players[cur];
-        me.isTurn = true;
-        me.isImmune = false; //immunity ends at the beginning of your turn.
 
-        //todo: draw card.
-        me.hand.push(playPile.pop());
+        //todo: beginTurn(me)
+            me.isTurn = true;
+            me.isImmune = false; //immunity ends at the beginning of your turn.
+            me.draw();
+        //
 
-        //todo: getFoeDiscardCount
-        let d = players.filter(function(p){return !p.isTurn;})
-            .reduce(function(prev, cur){
-                return prev.discard + cur.discard;
-        });
+        //get/prep matrix values
+            let myDis = discardPile.filter(function(card){
+            return card.user == me.uuid;
+        }).length;
+            let foeDis = discardPile.filter(function(card){
+            return card.user != me.uuid;
+        }).length;
+            let h = toMask(me.hand);
 
-        let h = toMask(me.hand);
-
-        let gameState = players.map(function(p){
+        gameState = players.map(function(p){
             return {
                 uuid: p.uuid,
                 t: p.isTurn && 1 || 2,
@@ -414,7 +417,7 @@ function main(){
                 m: [
                     [me.wins, p.wins],
                     [h, ai.speculate(startDeck, discardPile, me.hand)], //todo: dont let speculation results to be the same (personality based f())
-                    [me.discard, d]
+                    [myDis, foeDis]
                 ]
             };
         });
@@ -422,43 +425,51 @@ function main(){
         let thoughts = ai.think(gameState, toMind(me.hand, me.ideals));
 
         //perhaps it is best to attempt to perform each action starting with the best, if it is illegal, then just try the next action.
-        let discard = thoughts.find(function(thought){
-            return funcs(gameState, players)[thought.action](thought)
+        let playedCard = thoughts.find(function(thought){
+            return use[thought.action](thought);
         });
 
-        let isLegal = !!discard;
+        let isLegal = !!playedCard;
+        //rule: if there is no legal action, then just discard a card (todo: select smartly)
+        playedCard = playedCard || me.hand.splice(0, 1);
 
-        //if there is no legal action, then just discard :(
-        //todo: noMoveDiscard(me.hand, thoughts[0].action)
-        discard = discard || me.hand.splice(t.find(me.hand, "perk", thoughts[0].action), 1);
 
-        discardPile.push(discard);
+        //todo: db.stashRound(turnData) (push to q system)
+            stashEvents.push({
+                round: round,
+                turns: turns,
+                gameState: gameState,
+                thoughts: thoughts,
+                choice: playedCard,
+                legal: isLegal
+            });
 
-        //todo: endTurn()
-        me.isTurn = false;
-        turns++;
-        cur++;
-        if(cur === players.length)
-            cur = 0;
 
-        //todo: async save turn data (push to q system)
-        let saveData = {
-            round: round,
-            turns: turns,
-            gameState: gameState,
-            thoughts: thoughts,
-            choice: discard,
-            legal: isLegal
-        };
-        stashEvents.push(saveData);
+        //todo: endTurn(me, playedCard)
+            me.isTurn = false;
+            turns++;
+            if(cur++ === players.length)
+                cur = 0;
 
-        //then: try to end game if only one player left then winner.wins++; round++ (dont just kill the loop unless 3 rounds have been attained by a single player)
-        inGame = players.filter(function(p){return p.inPlay;}).length < 2;
+            //todo: just call me.discard() ??
+            playedCard.user = me.uuid;
+            discardPile.push(playedCard);
+
+            //then: try to end game if only one player left
+            // then winner.wins++; round++
+            // (dont just kill the loop unless 3 rounds have been attained by a single player)
+            if(players.filter(function(p){return p.inPlay;}).length === 1){
+                turns = 0;
+                round++;
+                let winner = players.find(function(p){return p.inPlay;});
+                //todo: tryEndGame()
+                    if(winner.wins++ === 3)
+                        inGame = false;
+            }
     }
 
     console.log("game has ended!");
+    console.log(JSON.stringify(stashEvents, null, ' '));
 }
 
-
-var stashEvents = [];
 main();

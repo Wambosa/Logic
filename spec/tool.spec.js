@@ -140,13 +140,26 @@ describe("the helper tools", function(){
 
     describe("when shuffling an object array", function(){
 
-        it("tool.random is implemented", function(){
+        it("does not remove items from the new list", function(){
+            let cards = [
+                {name: "goku"},
+                {name: "yamcha"},
+                {name: "krillin"}
+            ];
 
-            spyOn(tool, 'random');
+            let playPile = tool.shuffle(cards);
 
-            tool.shuffle([{a:"t"}, {a:"t"}]);
+            function quickFind(arr, name){
+                return arr.find(function(c){
+                    return c.name == name;
+                });
+            }
 
-            expect(tool.random).toHaveBeenCalled();
+            let isGokuThere = !!quickFind(playPile, 'goku');
+            let isYamchaThere = !!quickFind(playPile, 'yamcha');
+            let isKrillinThere = !!quickFind(playPile, 'krillin');
+
+            expect(true == isGokuThere == isYamchaThere == isKrillinThere).toBeTruthy();
         });
 
         it("does not taint the original array reference", function(){
@@ -164,8 +177,23 @@ describe("the helper tools", function(){
             ];
 
             let playPile = tool.shuffle(cards);
+            playPile.push({name:"taint!"});
 
-            expect(cards).toNotEqual(playPile);
+            expect(cards[10]).toBeFalsy();
+        });
+
+        it("does not remove items from the original list", function(){
+            let cards = [
+                {name: "goku"},
+                {name: "yamcha"},
+                {name: "krillin"},
+                {name: "vegeta"},
+                {name: "roshi"}
+            ];
+
+            let playPile = tool.shuffle(cards);
+
+            expect(cards.length).toBe(playPile.length);
         });
     });
 

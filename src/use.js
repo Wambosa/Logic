@@ -26,7 +26,7 @@ function removePeek(players, uuid, cardMask){
 }
 
 function discard(hand, card){
-    let index = t.simplify(hand).indexOf(card.mask);
+    let index = t.simplify(hand).indexOf(card.mask);//toso: fix this line (the issue likely comes from the guard accuse/ or not having a legal action)
 
     if(index === -1)
         throw new Error("FATAL: use.discard must NOT fail to remove a card from the hand.");
