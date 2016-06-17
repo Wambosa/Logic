@@ -52,7 +52,7 @@ module.exports = {
 
         choices.forEach(function(c){
             targets.filter(function(tar){
-                return !tar.isImmune && tar.t & c.t;
+                return !tar.isImmune && tar.t & c.t && tar.inPlay; //todo: write test for only targeting inPlay
             }).forEach(function(tar){
                 actions.push({
                     risk: self.computeRisk(tar.m, c.m),

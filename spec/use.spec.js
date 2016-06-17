@@ -1045,6 +1045,32 @@ describe("a cardUse instance", function(){
             expect(result).toEqual({mask: 16, perk: "policy"});
         });
 
+        it("then returns played card if targeting self", function(){
+            let playPile = [];
+            let discardPile = [];
+
+            let actions = [
+                {name: "draw", func: draw(playPile)},
+                {name: "discard", func: discard(discardPile)}
+            ];
+
+            let players = [
+                Player("goku", [{mask: 16, perk: "policy"}]).configure(actions),
+                Player("vegeta", [{mask: 128, perk: "favor"}]).configure(actions)
+            ];
+
+            let u = use.configure(null, players);
+
+            players[0].isTurn = true;
+
+            let result = u.policy({
+                action: "policy",
+                target: "goku"
+            });
+
+            expect(result).toEqual({mask: 16, perk: "policy"});
+        });
+
         it("implements unPeek on player", function(){
             let playPile = [];
             let discardPile = [];

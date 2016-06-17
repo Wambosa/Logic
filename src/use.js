@@ -26,7 +26,7 @@ function removePeek(players, uuid, cardMask){
 }
 
 function discard(hand, card){
-    let index = t.simplify(hand).indexOf(card.mask);//toso: fix this line (the issue likely comes from the guard accuse/ or not having a legal action)
+    let index = t.simplify(hand).indexOf(card.mask);//todo: fix this line (the issue likely comes from the guard accuse/ or not having a legal action)
 
     if(index === -1)
         throw new Error("FATAL: use.discard must NOT fail to remove a card from the hand.");
@@ -140,12 +140,13 @@ module.exports = {
 
                 target.inPlay = !(princess & t.toMask(target.hand));
 
+                let playedCard = discard(me.hand, t.find(me.hand, 'perk', thought.action));
+
                 target.discard(); //todo: empty arg tosses entire hand (only one card in love letter)
 
                 if(target.inPlay)
                     target.draw(); //already has knowledge of deck on player init
 
-                let playedCard = discard(me.hand, t.find(me.hand, 'perk', thought.action));
                 unPeek(me.uuid, playedCard.mask);
                 return playedCard;
             },
