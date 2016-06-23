@@ -224,7 +224,8 @@ describe("a cardUse instance", function(){
             expect(players[1].inPlay).toBeFalsy();
         });
 
-        it("when the guess is GUARD, then the action fails to run", function(){
+        xit("when the guess is GUARD, then the action fails to run", function(){
+            //this can break the game if it is the only action left find another way to solve the problem
             let gameState = [
                 {
                     uuid: "goku",

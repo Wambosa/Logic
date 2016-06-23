@@ -262,6 +262,7 @@ describe("the AI module", function(){
                     uuid: "foe",
                     t: tar_foe,
                     isImmune: false,
+                    inPlay: true,
                     m: [
                         [0, 0],
                         [3, 32],

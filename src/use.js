@@ -51,11 +51,8 @@ module.exports = {
                 let target = player(thought.target);
                 let speculation = me.peek[target.uuid] || stateOf(thought.target).m[1][1];
 
-                //todo: instead of invalidating, either re-speculate or change guess to random (if this is the only option)
-                let illegal = speculation & guard; //rule: cannot accuse another guard
-
-                if (illegal)
-                    return false;
+                //todo: maybe improve this by speculating per action instead of per player? this way the accuse action cannot speculate another guard
+                speculation = !(speculation & guard) && speculation || [2,4,8,16,32,64,128][t.random(6)]; //rule: cannot accuse another guard. random roll another guess
 
                 target.inPlay = !(speculation & t.toMask(target.hand));
                 //target.discard

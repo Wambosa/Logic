@@ -50,10 +50,11 @@ const startDeck = Object.freeze([
     {mask: princess, name: "Princess", perk: "favor" }
 ]);
 
+var stashEvents = [];
+
 //later: the gameLoop/gameMaster should be instantiable and configurable to run from a selection of different game rules
 function main(todoArgs){
 
-    var stashEvents = [];
     let gameState = [{}, {}]; //I need to determine if this is truly needed or not. all the tests get along without it except accuse
     let inGame = true;
     let playerCount = 4;
@@ -64,8 +65,8 @@ function main(todoArgs){
 
 
     //todo: stashObject nosql q system
-    stashEvents.push(Object.create(playPile));
-    stashEvents.push(Object.create(discardPile));
+    stashEvents.push(playPile.slice(0));
+    stashEvents.push(discardPile.slice(0));
 
     let draw = _.curry(function(playPile, banishPile){
         return function(){
@@ -99,7 +100,7 @@ function main(todoArgs){
         player.draw();
     });
 
-    stashEvents.push(Object.create(players));
+    //todo: stashEvents.push(players.map(toReportObject));
 
     //these three can go in gamestate
     var cur = 0;
@@ -121,6 +122,9 @@ function main(todoArgs){
     while (inGame){
 
         let me = players[cur];
+
+        while(!me.inPlay)
+            me = players[++cur];
 
         //todo: beginTurn(me)
             me.isTurn = true;
@@ -156,23 +160,30 @@ function main(todoArgs){
         var use = Use.configure(gameState, players);
 
         //perhaps it is best to attempt to perform each action starting with the best, if it is illegal, then just try the next action.
-        let playedCard = {};
-            thoughts.find(function(thought){
-            return (playedCard = use[thought.action](thought));
+        //this action part needs to be a player method. each personality can have different methods. a personality obj new Personality(ideals, interpreter)
+        let playedCard = thoughts.find(function(thought){
+            return use[thought.action](thought);
         });
 
+        //should not need this. just checking
+        if(typeof playedCard == "array"){
+            console.log(thoughts);
+            console.log(playedCard);
+            throw Error("incorrect return type from find");
+        }
+
         let isLegal = !!playedCard;
-        //rule: if there is no legal action, then just discard a card (todo: select smartly)
-        playedCard = playedCard || me.hand.splice(0, 1);
+        //rule: if there is no legal action, then just discard a card (todo: select smartly using highest risk)
+        playedCard = playedCard || me.hand.splice(0, 1); //.sort.splice(0,1)
 
 
         //todo: db.stashRound(turnData) (push to q system)
             stashEvents.push({
                 round: round,
                 turns: turns,
-                gameState: Object.create(gameState),
-                thoughts: Object.create(thoughts),
-                choice: Object.create(playedCard),
+                gameState: gameState.map(function(g){g.m = g.m.toString(); return g;}),
+                thoughts: thoughts.slice(0),
+                choice: playedCard,
                 legal: isLegal
             });
 
@@ -248,4 +259,9 @@ function main(todoArgs){
     console.log(JSON.stringify(stashEvents, null, ' '));
 }
 
-main();
+try {
+    main();
+}catch(e){
+    console.log(e);
+    console.log(JSON.stringify(stashEvents, null, ' '));
+}

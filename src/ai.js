@@ -4,7 +4,7 @@ var math = require('mathjs');
 var t = require(`${root}/src/tool`);
 
 module.exports = {
-    speculate: function (deck, discard, hand) {
+    speculate: function (deck, discard, hand, ignoreNumbers) {
 
         let possible = t.simplify(deck);
 
@@ -12,6 +12,10 @@ module.exports = {
 
         known.forEach(function(k){
             possible.splice(possible.indexOf(k), 1);
+        });
+
+        possible = possible.filter(function(k){//todo: write a test for this
+            return !ignoreNumbers || ignoreNumbers && ignoreNumbers.indexOf(k) != -1;
         });
 
         let guess = t.random(possible.length-1);
