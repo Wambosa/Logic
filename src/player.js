@@ -4,6 +4,7 @@ module.exports = function Player(uuid, hand, ideals){
     var self = this;
 
     self = {
+        name: uuid, //todo: uuid is stupid. just use name.... what was i thinking!
         uuid: uuid,
         inPlay: true,
         wins: 0,
@@ -13,6 +14,13 @@ module.exports = function Player(uuid, hand, ideals){
 
         push: function(card){
             self.hand.push(card);
+        },
+        
+        purge: function(methodName){
+            if(self[methodName])
+                self.hand.forEach(function(){
+                    self[methodName]();
+                });
         },
 
         configure: function(actions){

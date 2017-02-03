@@ -4,6 +4,7 @@
 # Custom Exclusions
 
 [Dd]ata/
+error.json
 
 # ignore massive media files by default
 *.pem

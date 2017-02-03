@@ -2,8 +2,9 @@
 
 var _ = require('ramda');
 var ai = require('./src/ai');
-var tool = require('./src/tool');
 var Use = require('./src/use');
+var tool = require('./src/tool');
+var Deck = require('./src/deck');
 var Player = require('./src/player');
 var fakeData = require('./src/fakeData');
 
@@ -59,41 +60,41 @@ function main(todoArgs){
     let inGame = true;
     let playerCount = 4;
 
-    let playPile = shuffle(startDeck); //todo: new Deck()
-    let banishPile = playPile.splice(0, 1);
-    let discardPile = playPile.splice(0, playerCount === 2 && 3 || 0);
+    let sharedDeck = new Deck(shuffle(startDeck));
+    sharedDeck.banish(1);
+    sharedDeck.discard(playerCount === 2 && 3 || 0);
 
 
     //todo: stashObject nosql q system
-    stashEvents.push(playPile.slice(0));
-    stashEvents.push(discardPile.slice(0));
+    stashEvents.push(sharedDeck.pile.map(function(c){return c.mask;}));
+    stashEvents.push(sharedDeck.discarded.map(function(c){return c.mask;}));
 
-    let draw = _.curry(function(playPile, banishPile){
-        return function(){
-            this.hand.push(playPile.pop() || banishPile.pop());
-        };
-    });
+    let draw = function(){
+        if(!sharedDeck.pile.length)
+            return false;
+            
+        this.hand.push(sharedDeck.draw());
+        return true;
+    };
 
     //note: only supports a single card discard
-    let discard = _.curry(function(discardPile){
-        return function() {
-            if(this.hand.length) {
-                this.hand[this.hand.length - 1].user = this.uuid;
-                discardPile.push(this.hand.pop());
-            }
-        };
-    });
+    let discard = function() {
+        if(this.hand.length) {
+            this.hand[this.hand.length - 1].user = this.uuid;
+            sharedDeck.discarded.push(this.hand.pop()); //maybe make discard() take optional types... meah
+        }
+    };
 
     let actions = [
-        {name: "draw", func: draw(playPile, banishPile)},
-        {name: "discard", func: discard(discardPile)}
+        {name: "draw", func: draw},
+        {name: "discard", func: discard}
     ];
 
     let players = [
-        Player("shon", [], fakeData.ideals.shon).configure(actions),
-        Player("atlas", [], fakeData.ideals.atlas).configure(actions),
-        Player("jack", [], fakeData.ideals.rand).configure(actions),
-        Player("glen", [], fakeData.ideals.glen).configure(actions)
+        new Player("shon", [], fakeData.ideals.shon).configure(actions),
+        new Player("atlas", [], fakeData.ideals.atlas).configure(actions),
+        new Player("jack", [], fakeData.ideals.rand).configure(actions),
+        new Player("glen", [], fakeData.ideals.glen).configure(actions)
     ];
 
     players.forEach(function(player){
@@ -108,37 +109,56 @@ function main(todoArgs){
     var round = 0;
 
     function resetRound(){
+        console.log("round reset", "begin");
+        
         players.forEach(function(player){
-            player.discard();
+            player.purge('discard');
         });
-        playPile = shuffle(discardPile.slice(0)); //move the discard over
-        discardPile = playPile.splice(0, playerCount === 2 && 4 || 1); //make sure discard is terminated
+        
+        sharedDeck.reset();
+        sharedDeck.banish(1);
+        sharedDeck.discard(playerCount === 2 && 3 || 0);
+        
+        console.log("deck check", sharedDeck.pile.map(function(c){return c.mask;}));
+        
         players.forEach(function(player){
+            player.inPlay = true;
             player.draw();
+            console.log(player.name, "drew", player.hand[0].name);
         });
+        
+        console.log("deck:", sharedDeck.pile.length, ". discard:", sharedDeck.discarded.length, ". players:", players.length);
     }
     //var use = Use.configure(gameState, players);
 
+    function nextPlayer() {
+        cur = ++cur !== players.length && cur || 0;
+        return players[cur];
+    }
+
     while (inGame){
 
-        let me = players[cur];
-
-        while(!me.inPlay)
-            me = players[++cur];
+        let me = nextPlayer();
+        
+        while(!me.inPlay){
+            console.log("turn skip", me.name);
+            me = nextPlayer();
+        }
 
         //todo: beginTurn(me)
             me.isTurn = true;
             me.isImmune = false; //immunity ends at the beginning of your turn.
             me.draw();
+            console.log("turn", turns, me.name, me.hand.map(function(c){return c.perk;}));
         //
 
         //get/prep matrix values
-            let myDis = discardPile.filter(function(card){
-            return card.user == me.uuid;
-        }).length;
-            let foeDis = discardPile.filter(function(card){
-            return card.user != me.uuid;
-        }).length;
+            let myDis = sharedDeck.discarded.filter(function(card){
+                return card.user == me.uuid;
+            }).length;
+            let foeDis = sharedDeck.discarded.filter(function(card){
+                return card.user != me.uuid;
+            }).length;
             let myCards = toMask(me.hand);
 
         gameState = players.map(function(p){ //this needs to update the object in place instead of creating a new one via map
@@ -149,7 +169,7 @@ function main(todoArgs){
                 inPlay: p.inPlay,
                 m: [
                     [me.wins, p.wins],
-                    [myCards, me.peek[p.uuid] || ai.speculate(startDeck, discardPile, me.hand)], //todo: dont let speculation results to be the same (personality based f())
+                    [myCards, me.peek[p.uuid] || ai.speculate(startDeck, sharedDeck.discarded, me.hand)], //todo: dont let speculation results to be the same (personality based f())
                     [myDis, foeDis]
                 ]
             };
@@ -162,10 +182,17 @@ function main(todoArgs){
         //perhaps it is best to attempt to perform each action starting with the best, if it is illegal, then just try the next action.
         //this action part needs to be a player method. each personality can have different methods. a personality obj new Personality(ideals, interpreter)
         let playedCard = thoughts.find(function(thought){
-            return use[thought.action](thought);
+            //this might be too clever, the method called will return false if it was not legal
+            let result = use[thought.action](thought);
+            
+            if(result)
+                console.log(JSON.stringify(thought)+'\n');
+                
+            return result;
         });
 
         //should not need this. just checking
+        // convert this to a test
         if(typeof playedCard == "array"){
             console.log(thoughts);
             console.log(playedCard);
@@ -175,6 +202,12 @@ function main(todoArgs){
         let isLegal = !!playedCard;
         //rule: if there is no legal action, then just discard a card (todo: select smartly using highest risk)
         playedCard = playedCard || me.hand.splice(0, 1); //.sort.splice(0,1)
+
+        if(!isLegal){
+            console.log("no legal move", "discarding", playedCard);
+            console.log(thoughts);
+        }
+
 
 
         //todo: db.stashRound(turnData) (push to q system)
@@ -191,39 +224,57 @@ function main(todoArgs){
         //todo: endTurn(me, playedCard)
             me.isTurn = false;
             turns++;
-            if(++cur === players.length)
-                cur = 0;
 
             //todo: just call me.discard() ??
             playedCard.user = me.uuid;
-            discardPile.push(playedCard);
+            sharedDeck.discarded.push(playedCard);
 
             //if no cards in deck.end game with high card
-            if(!playPile.length){
+            if(!sharedDeck.pile.length){
+                console.log("sharedDeck is empty", "eliminating low card holders...");
+                
+                function validPlayer(p){
+                    return p.inPlay && p.hand.length;
+                }
+                
+                let highCardPlayer = players
+                    .filter(validPlayer)
+                        .sort(function(a, b){
+                            let aVal = toMask(a.hand);
+                            let bVal = toMask(b.hand);
+                            if(aVal > bVal)
+                                return 1;
+                            else if(aVal < bVal)
+                                return -1;
+                            else
+                                return 0;
+                        })[0];
 
-                let highCardPlayer = players.find(function(p){return p.inPlay;});
+                if(!highCardPlayer)
+                    throw "there is no highCardPlayer???";
 
                 players.filter(function(p){
-                    return p.inPlay;
+                    return validPlayer(p) && p.uuid != highCardPlayer.uuid;
                 }).forEach(function(p){
-
-                    let highCard = toMask(p.hand);
+                    
+                    let myCard = toMask(p.hand);
                     let bossCard = toMask(highCardPlayer.hand);
 
                     function promotePlayer(player){
+                        console.log(highCardPlayer.name, "tie eliminated", bossCard, "<", myCard);
                         highCardPlayer.inPlay = false;
                         highCardPlayer = player;
                     }
 
-                    if(highCard > bossCard) {
+                    if(myCard > bossCard) {
                         promotePlayer(p);
 
-                    }else if(highCard === bossCard){
-                        //then sum up the discardPile
+                    }else if(myCard === bossCard){
+                        //then sum up the sharedDeck.discarded
                         //higher number wins the draw
 
                         let getSurplusValue = function(uuid){
-                            return discardPile.filter(function(card){
+                            return sharedDeck.discarded.filter(function(card){
                                 return card.user === uuid;
                             }).reduce(function(p, c){
                                 return p.mask + c.mask;
@@ -233,35 +284,57 @@ function main(todoArgs){
                         let surplus = getSurplusValue(p.uuid);
                         let bossSurplus = getSurplusValue(highCardPlayer.uuid);
 
-                        if(surplus > bossSurplus)
+                        if(surplus >= bossSurplus)
                             promotePlayer(p);
+                    }else{
+                        p.inPlay = false;
                     }
+
                 });
             }
 
 
-            //then: try to end game if only one player left
+            //then: try to end game if only one player left OR if there are no cards left in the sharedDeck
             // then winner.wins++; round++
             // (dont just kill the loop unless 3 rounds have been attained by a single player)
-            if(players.filter(function(p){return p.inPlay;}).length === 1){
+            let isLastPlayer = players.filter(function(p){return p.inPlay;}).length === 1;
+        
+            if(isLastPlayer || !sharedDeck.pile.length){
                 turns = 0;
                 round++;
-                let winner = players.find(function(p){return p.inPlay;});
+                let winners = players.filter(function(p){return p.inPlay;});
+                
+                console.log("ROUND", round-1, "END", winners.map(function(p){return p.name;}));
                 //todo: tryEndGame()
-                    if(++winner.wins === 3)
-                        //todo: cur = winner.index;
-                        inGame = false;
-                resetRound();
+                
+                let finalWinners = [];
+                
+                winners.forEach(function(p){
+                    if(++p.wins === 3)
+                        finalWinners.push(p);
+                });
+                
+                if(finalWinners.length){
+                    console.log("GAME OVER", finalWinners.map(function(p){return p.name;}));
+                    //todo: cur = winner.index;
+                    inGame = false;
+                }else{
+                    resetRound();
+                }
+                
             }
     }
 
     console.log("game has ended!");
-    console.log(JSON.stringify(stashEvents, null, ' '));
+    //console.log(JSON.stringify(stashEvents, null, ' '));
 }
 
 try {
     main();
 }catch(e){
     console.log(e);
-    console.log(JSON.stringify(stashEvents, null, ' '));
+    
+    let fs = require('fs');
+    fs.writeFile('error.json', JSON.stringify(stashEvents, null, ' '));
+    console.log('gamestate written to error.json');
 }
