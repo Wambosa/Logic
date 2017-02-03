@@ -67,7 +67,6 @@ function main(todoArgs){
 
     //todo: stashObject nosql q system
     stashEvents.push(sharedDeck.pile.map(function(c){return c.mask;}));
-    stashEvents.push(sharedDeck.discarded.map(function(c){return c.mask;}));
 
     let draw = function(){
         if(!sharedDeck.pile.length)
@@ -81,7 +80,7 @@ function main(todoArgs){
     let discard = function() {
         if(this.hand.length) {
             this.hand[this.hand.length - 1].user = this.uuid;
-            sharedDeck.discarded.push(this.hand.pop()); //maybe make discard() take optional types... meah
+            sharedDeck.discard(this.hand.pop());
         }
     };
 
@@ -153,12 +152,8 @@ function main(todoArgs){
         //
 
         //get/prep matrix values
-            let myDis = sharedDeck.discarded.filter(function(card){
-                return card.user == me.uuid;
-            }).length;
-            let foeDis = sharedDeck.discarded.filter(function(card){
-                return card.user != me.uuid;
-            }).length;
+            let myDis = sharedDeck.history(me.uuid).length;
+            let foeDis = sharedDeck.history(me.uuid, true).length;
             let myCards = toMask(me.hand);
 
         gameState = players.map(function(p){ //this needs to update the object in place instead of creating a new one via map
@@ -169,7 +164,7 @@ function main(todoArgs){
                 inPlay: p.inPlay,
                 m: [
                     [me.wins, p.wins],
-                    [myCards, me.peek[p.uuid] || ai.speculate(startDeck, sharedDeck.discarded, me.hand)], //todo: dont let speculation results to be the same (personality based f())
+                    [myCards, me.peek[p.uuid] || ai.speculate(startDeck, sharedDeck.history(), me.hand)], //todo: dont let speculation results to be the same (personality based f())
                     [myDis, foeDis]
                 ]
             };
@@ -227,7 +222,7 @@ function main(todoArgs){
 
             //todo: just call me.discard() ??
             playedCard.user = me.uuid;
-            sharedDeck.discarded.push(playedCard);
+            sharedDeck.discard(playedCard);
 
             //if no cards in deck.end game with high card
             if(!sharedDeck.pile.length){
@@ -261,7 +256,7 @@ function main(todoArgs){
                     let bossCard = toMask(highCardPlayer.hand);
 
                     function promotePlayer(player){
-                        console.log(highCardPlayer.name, "tie eliminated", bossCard, "<", myCard);
+                        console.log("tie eliminated", highCardPlayer.name, bossCard, "<", myCard);
                         highCardPlayer.inPlay = false;
                         highCardPlayer = player;
                     }
@@ -270,15 +265,14 @@ function main(todoArgs){
                         promotePlayer(p);
 
                     }else if(myCard === bossCard){
-                        //then sum up the sharedDeck.discarded
+                        //then sum up the sharedDeck discards for the competing players
                         //higher number wins the draw
 
                         let getSurplusValue = function(uuid){
-                            return sharedDeck.discarded.filter(function(card){
-                                return card.user === uuid;
-                            }).reduce(function(p, c){
-                                return p.mask + c.mask;
-                            });
+                            return sharedDeck.history(uuid)
+                                .reduce(function(p, c){
+                                    return p.mask + c.mask;
+                                });
                         };
 
                         let surplus = getSurplusValue(p.uuid);

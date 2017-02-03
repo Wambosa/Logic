@@ -66,5 +66,27 @@ module.exports = {
         return objList.find(function (obj) {
             return obj[property] === key;
         });
+    },
+    
+    //note: designed to work with player objects
+    drawFrom: function(deck){
+        return function(){
+            if(!deck.pile.length)
+                return false;
+                
+            this.hand.push(deck.draw());
+            return true;
+        };
+    },
+
+    //note: only supports a single card discard
+    discardTo: function(deck) {
+        return function(){
+            if(this.hand.length) {
+                this.hand[this.hand.length - 1].user = this.uuid;
+                deck.discard(this.hand.pop());
+            }
+        };
+
     }
 };

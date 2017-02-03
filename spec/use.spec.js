@@ -4,9 +4,9 @@ var root = process.cwd();
 var _ = require('ramda');
 var rewire = require('rewire');
 var use = rewire(`${root}/src/use`);
+var t = require(`${root}/src/tool`);
 var Deck = require(`${root}/src/deck`);
 var Player = require(`${root}/src/player`);
-
 
 describe("a cardUse instance", function(){
 
@@ -862,17 +862,16 @@ describe("a cardUse instance", function(){
 
         it("then target discards hand to discardPile", function(){
 
-            let playPile = [];
-            let discardPile = [];
+            let deck = new Deck([]);
 
             let actions = [
-                {name: "draw", func: draw(playPile)},
-                {name: "discard", func: discard(discardPile)}
+                {name: "draw", func: t.drawFrom(deck)},
+                {name: "discard", func: t.discardTo(deck)}
             ];
 
             let players = [
-                Player("goku", [{mask: 16, perk: "policy"}]).configure(actions),
-                Player("vegeta", [{mask: 128, perk: "favor"}]).configure(actions)
+                new Player("goku", [{mask: 16, perk: "policy"}]).configure(actions),
+                new Player("vegeta", [{mask: 128, perk: "favor"}]).configure(actions)
             ];
 
             let u = use.configure(null, players);
@@ -883,17 +882,16 @@ describe("a cardUse instance", function(){
                 target: "vegeta"
             });
 
-            expect(discardPile[0]).toEqual({mask: 128, perk: "favor"});
+            expect(deck.history("vegeta")[0].mask).toEqual(128);
         });
 
         it("then target draws a new card immediately", function(){
 
-            let playPile = Deck([{mask: 32, perk: "mandate"}]);
-            let discardPile = [];
+            let deck = new Deck([{mask: 32, perk: "mandate"}]);
 
             let actions = [
-                {name: "draw", func: playPile.draw},
-                {name: "discard", func: discard(discardPile)}
+                {name: "draw", func: t.drawFrom(deck)},
+                {name: "discard", func: t.discardTo(deck)}
             ];
 
             let players = [
