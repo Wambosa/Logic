@@ -1,31 +1,31 @@
 "use strict";
 
-var tool = require('./tool');
+var t = require('./tool');
 
-var shuffle = tool.shuffle;
+var shuffle = t.shuffle;
 
-module.exports = function(cards, isStatic){
+module.exports = function(cards){
     let self = this;
 
     self = {
-        isStatic: isStatic || false,
         originals: Object.freeze(cards.slice(0)),
         pile: cards || [],
         discarded: [],
         banished: [],
 
-        //change to top and bottom where top adds to the end of the array (push)
-        push: function(card){
+        //todo: change to top and bottom where top adds to the end of the array (push)
+        top: function(card){
             self.pile.push(card);
         },
 
+        //todo: multidraw support
         draw: function(){
-            return self.pile.pop() || self.banished.pop(); //because policy can trigger a card draw on the last turn
+            return self.pile.pop() || self.banished.pop();
         },
         
         discard: function(c){
             
-            if(typeof c == "number"){
+            if(typeof c == "number" && self.pile.length){
                 for(let i=0; i<c; ++i)
                     self.discarded.push(self.pile.pop());
                 return 1;
@@ -56,7 +56,7 @@ module.exports = function(cards, isStatic){
             
             return self.discarded.filter(isOpposite && isNotMine || isMine);
         },
-        
+
         reset: function(){
             self.pile = shuffle(self.originals);
             self.discarded = [];
@@ -64,5 +64,5 @@ module.exports = function(cards, isStatic){
         }
     };
 
-    return self;//todo: honor isStatic with object.freeze
+    return self;
 };
