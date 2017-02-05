@@ -3,14 +3,14 @@
 var _ = require('ramda');
 var ai = require('./src/ai');
 var Use = require('./src/use');
-var tool = require('./src/tool');
+var t = require('./src/tool');
 var Deck = require('./src/deck');
 var Player = require('./src/player');
 var fakeData = require('./src/fakeData');
 
-var toMask = tool.toMask;
-var toMind = tool.toMind;
-var shuffle = tool.shuffle;
+var toMask = t.toMask;
+var toMind = t.toMind;
+var shuffle = t.shuffle;
 
 // first i need to figure out the game logic loop
 // i will run the loop without any network connections.
@@ -170,7 +170,7 @@ function main(todoArgs){
             };
         });
 
-        let thoughts = ai.think(gameState, toMind(me.hand, me.ideals));
+        let thoughts = ai.think(gameState, t.toChoice(me.hand, me.ideals));
 
         var use = Use.configure(gameState, players);
 

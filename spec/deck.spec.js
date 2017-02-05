@@ -177,5 +177,4 @@ describe("a Deck instance", function(){
             expect(deck.draw()).toBe(4);
         });
     });
-
 });

@@ -1,9 +1,10 @@
 "use strict";
 
-var root = process.cwd();
-var tool = require(`${root}/src/tool`);
+const tool = require('../src/tool');
+const Deck = require('../src/deck');
+const Player = require('../src/player');
 
-describe("the helper tools", function(){
+describe("the helper tool", function(){
 
     describe("when generating a random number", function(){
 
@@ -197,5 +198,145 @@ describe("the helper tools", function(){
         });
     });
 
-    //todo: when finding...
+    //note: this format is still a work in progress
+    // i suspect that this will take an even more generic flat form later on
+    // especially considering the uuid can be converted back to bitmask form
+    describe("when mapping hand to choice list format", function(){
+        
+        it("then expected properties are returned", function(){
+            
+            let hand = [{perk: 'power'}];
+            
+            let ideals = {
+                "power": {
+                    mask: 0,
+                    t: 2,
+                    m: [[-1, 2],
+                        [128, 32],
+                        [3, 8]
+                    ]
+                }
+            };
+            
+            let choices = tool.toChoice(hand, ideals);
+            
+            expect(choices[0].uuid).toBeTruthy();
+            expect(choices[0].t).toBeTruthy();
+            expect(choices[0].m.length).toBeTruthy();
+        });
+    });
+    
+    describe("when finding an object by property from a list", function(){
+        
+        it("then returns falsy on failure", function(){
+            
+            let list = [
+                {name: "vu"}
+            ];
+            
+            expect(tool.find(list, "name", "ross")).toBeFalsy();
+        });
+        
+        it("then returns a reference of the object", function(){
+            
+            let list = [
+                {name: "vu"},
+                {name: "ross"}
+            ];
+            
+            tool.find(list, "name", "vu").status = "M.I.A.";
+            
+            expect(list[0].status).toBe("M.I.A.");
+        });
+    });
+    
+    describe("given tool.drawFrom is binded to a Player", function(){
+        
+        describe("when Player action draw() is called", function(){
+            
+            it("then cards are taken from Deck.pile", function(){
+               
+               let deck = new Deck([3,4,5]);
+               
+               let player = new Player("vugeta").configure([{
+                   name: "draw", func: tool.drawFrom(deck)
+               }]);
+               
+               player.draw();
+               
+               expect(deck.pile.length).toBe(2);
+            });
+            
+            it("then cards are added to Player.hand", function(){
+               let deck = new Deck([3,4,5]);
+        
+               let player = new Player("vugeta").configure([
+                    {name: "draw", func: tool.drawFrom(deck)}
+                ]);
+               
+               player.draw();
+               expect(player.hand[0]).toBe(5);
+            });
+            
+            it("then only 1 card is drawn", function(){
+               let deck = new Deck([3,4,5]);
+        
+               let player = new Player("vugeta").configure([
+                    {name: "draw", func: tool.drawFrom(deck)}
+                ]);
+               
+               player.draw(2);
+               expect(player.hand.length).toBe(1);
+            });            
+        });
+    });
+    
+    describe("given tool.discardTo is binded to a Player", function(){
+       
+       describe("when Player action discard() is called", function(){
+           
+           it("then cards are taken from Player.hand", function(){
+               
+                let deck = new Deck([1]);
+               
+                let player = new Player("vugeta", [{mask: 4}]).configure([
+                    {name: "discard", func: tool.discardTo(deck)}
+                ]);
+                
+                player.discard();
+                
+                expect(player.hand.length).toBeFalsy();
+           });
+
+           it("then cards are placed in Deck.discarded", function(){
+               
+                let deck = new Deck([1]);
+               
+                let player = new Player("vugeta", [{mask: 4}]).configure([
+                    {name: "discard", func: tool.discardTo(deck)}
+                ]);
+                
+                player.discard();
+                
+                expect(deck.history()[0]).toEqual({user: "vugeta", mask: 4});
+           });
+           
+            it("then only the top 1 card is discarded", function(){
+               
+                let deck = new Deck([1]);
+               
+                let player = new Player("vugeta", [{mask: 4}, {mask: 8}]).configure([
+                    {name: "discard", func: tool.discardTo(deck)}
+                ]);
+                
+                player.discard(2);
+                
+                expect(deck.history().length).toBe(1);
+                expect(deck.history()[0]).toEqual({user: "vugeta", mask: 8});
+           });
+           
+           
+       });
+    });
+
 });

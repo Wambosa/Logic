@@ -50,8 +50,7 @@ module.exports = {
         return list;
     },
 
-    //todo: write tests for funcs below
-    toMind: function(hand, ideals){
+    toChoice: function(hand, ideals){
         return hand.map(function(card){
             let i = ideals[card.perk];
             return {
@@ -62,6 +61,7 @@ module.exports = {
         });
     },
 
+    //todo: findAll? hmmm
     find: function (objList, property, key) {
         return objList.find(function (obj) {
             return obj[property] === key;

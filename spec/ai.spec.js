@@ -220,7 +220,7 @@ describe("the AI module", function(){
                 }
             };
 
-            expect(ai.think(gameState, t.toMind(myHand, myIdeals))).toEqual([]);
+            expect(ai.think(gameState, t.toChoice(myHand, myIdeals))).toEqual([]);
         });
 
         it("does not think about immune* targets", function(){
@@ -253,7 +253,7 @@ describe("the AI module", function(){
                 }
             };
 
-            expect(ai.think(gameState, t.toMind(myHand, myIdeals))).toEqual([]);
+            expect(ai.think(gameState, t.toChoice(myHand, myIdeals))).toEqual([]);
         });
 
         it("orders thoughts by lowest risk first", function(){
@@ -294,7 +294,7 @@ describe("the AI module", function(){
                 }
             };
 
-            let thoughts = ai.think(gameState, t.toMind(myHand, myIdeals));
+            let thoughts = ai.think(gameState, t.toChoice(myHand, myIdeals));
 
             expect(thoughts[0].risk).toBeLessThan(thoughts[1].risk);
         });
