@@ -46,7 +46,7 @@ describe("the helper tool", function(){
                 {name: "nappa", m: 2}
             ];
 
-            expect(tool.simplify(arr, 'm')).toEqual([1,1,2]);
+            expect(tool.simplify(arr, 'name')).toEqual(["broli","raditz","nappa"]);
         });
     });
 

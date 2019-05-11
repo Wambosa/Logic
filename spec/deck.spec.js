@@ -159,6 +159,7 @@ describe("a Deck instance", function(){
             expect(deck.pile[0]).toBe(9);
         });
         
+        //note: this may be undesireable, likely need to set to opt in later
         it("then shuffles originals", function(){
             
             let deck = new Deck([9,8,7,6,5,4,3,2,1,0]);

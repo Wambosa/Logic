@@ -25,6 +25,7 @@ function removePeek(players, uuid, cardMask){
     return true;
 }
 
+//todo: just update t.discardTo(index), then delete this func
 function discard(hand, card){
     let index = t.simplify(hand).indexOf(card.mask);//todo: fix this line (the issue likely comes from the guard accuse/ or not having a legal action)
 
@@ -49,6 +50,8 @@ module.exports = {
 
                 let me = findMe(true);
                 let target = player(thought.target);
+                
+                //consider moving ai speculation here, we have everything we need from the player to pull it off. if only the deck was not shared, or each player had access to hi deck
                 let speculation = me.peek[target.uuid] || stateOf(thought.target).m[1][1];
 
                 //todo: maybe improve this by speculating per action instead of per player? this way the accuse action cannot speculate another guard

@@ -5,12 +5,11 @@ var ai = require('./src/ai');
 var Use = require('./src/use');
 var t = require('./src/tool');
 var Deck = require('./src/deck');
+var Game = require('./src/game');
 var Player = require('./src/player');
 var fakeData = require('./src/fakeData');
 
 var toMask = t.toMask;
-var toMind = t.toMind;
-var shuffle = t.shuffle;
 
 // first i need to figure out the game logic loop
 // i will run the loop without any network connections.
@@ -56,271 +55,81 @@ var stashEvents = [];
 //later: the gameLoop/gameMaster should be instantiable and configurable to run from a selection of different game rules
 function main(todoArgs){
 
-    let gameState = [{}, {}]; //I need to determine if this is truly needed or not. all the tests get along without it except accuse
-    let inGame = true;
-    let playerCount = 4;
+    let sharedDeck = new Deck(startDeck);
 
-    let sharedDeck = new Deck(shuffle(startDeck));
-    sharedDeck.banish(1);
-    sharedDeck.discard(playerCount === 2 && 3 || 0);
-
-
-    //todo: stashObject nosql q system
-    stashEvents.push(sharedDeck.pile.map(function(c){return c.mask;}));
-
-    let draw = function(){
-        if(!sharedDeck.pile.length)
-            return false;
-            
-        this.hand.push(sharedDeck.draw());
-        return true;
-    };
-
-    //note: only supports a single card discard
-    let discard = function() {
-        if(this.hand.length) {
-            this.hand[this.hand.length - 1].user = this.uuid;
-            sharedDeck.discard(this.hand.pop());
-        }
-    };
-
-    let actions = [
-        {name: "draw", func: draw},
-        {name: "discard", func: discard}
+    let playerActions = [
+        {name: "draw", func: t.drawFrom(sharedDeck)},
+        {name: "discard", func: t.discardTo(sharedDeck)}
     ];
 
+    //todo: find some way to give knowledge of which deck is his. currently they all share a deck.
     let players = [
-        new Player("shon", [], fakeData.ideals.shon).configure(actions),
-        new Player("atlas", [], fakeData.ideals.atlas).configure(actions),
-        new Player("jack", [], fakeData.ideals.rand).configure(actions),
-        new Player("glen", [], fakeData.ideals.glen).configure(actions)
+        new Player("shon", [], fakeData.ideals.shon).configure(playerActions),
+        new Player("atlas", [], fakeData.ideals.atlas).configure(playerActions),
+        new Player("jack", [], fakeData.ideals.rand).configure(playerActions),
+        new Player("glen", [], fakeData.ideals.glen).configure(playerActions)
     ];
 
-    players.forEach(function(player){
-        player.draw();
+    let game = new Game({
+        guid: 123456789000,
+        name: 'LoveLetter',
+        use: Use,
+        deck: sharedDeck,
+        players: players
     });
 
-    //todo: stashEvents.push(players.map(toReportObject));
+    //todo: stashEvents.push(game.report() || game.report('players'));
 
-    //these three can go in gamestate
-    var cur = 0;
-    var turns = 0;
-    var round = 0;
+    // try this idea out. for now, just assume all instructions apply the player
+    // turn handler will order and envoke methods or set values on common objects
+    let turnInstructions = {
+        game: [],
+        deck: [],
+        player: [
+            {order: 1, property: 'isImmune', val: false}, //note: immunity ends at the beginning of your turn. (consider passing in turn func in options)
+            {order: 2, func: 'draw'}
+        ]
+    };
 
-    function resetRound(){
-        console.log("round reset", "begin");
-        
-        players.forEach(function(player){
-            player.purge('discard');
-        });
-        
-        sharedDeck.reset();
-        sharedDeck.banish(1);
-        sharedDeck.discard(playerCount === 2 && 3 || 0);
-        
-        console.log("deck check", sharedDeck.pile.map(function(c){return c.mask;}));
-        
-        players.forEach(function(player){
-            player.inPlay = true;
-            player.draw();
-            console.log(player.name, "drew", player.hand[0].name);
-        });
-        
-        console.log("deck:", sharedDeck.pile.length, ". discard:", sharedDeck.discarded.length, ". players:", players.length);
-    }
-    //var use = Use.configure(gameState, players);
+    game.beginRound();
 
-    function nextPlayer() {
-        cur = ++cur !== players.length && cur || 0;
-        return players[cur];
-    }
+    while (game.isRunning()){
 
-    while (inGame){
+        //finds the next player, draws a card and removes immunity
+        game.beginTurn(turnInstructions);
 
-        let me = nextPlayer();
-        
-        while(!me.inPlay){
-            console.log("turn skip", me.name);
-            me = nextPlayer();
-        }
+        //mutates the gamestate for this* turn
+        game.updatePerspective();
 
-        //todo: beginTurn(me)
-            me.isTurn = true;
-            me.isImmune = false; //immunity ends at the beginning of your turn.
-            me.draw();
-            console.log("turn", turns, me.name, me.hand.map(function(c){return c.perk;}));
-        //
-
-        //get/prep matrix values
-            let myDis = sharedDeck.history(me.uuid).length;
-            let foeDis = sharedDeck.history(me.uuid, true).length;
-            let myCards = toMask(me.hand);
-
-        gameState = players.map(function(p){ //this needs to update the object in place instead of creating a new one via map
-            return {
-                uuid: p.uuid,
-                t: p.isTurn && 1 || 2,
-                isImmune: p.isImmune,
-                inPlay: p.inPlay,
-                m: [
-                    [me.wins, p.wins],
-                    [myCards, me.peek[p.uuid] || ai.speculate(startDeck, sharedDeck.history(), me.hand)], //todo: dont let speculation results to be the same (personality based f())
-                    [myDis, foeDis]
-                ]
-            };
-        });
-
-        let thoughts = ai.think(gameState, t.toChoice(me.hand, me.ideals));
-
-        var use = Use.configure(gameState, players);
-
-        //perhaps it is best to attempt to perform each action starting with the best, if it is illegal, then just try the next action.
-        //this action part needs to be a player method. each personality can have different methods. a personality obj new Personality(ideals, interpreter)
-        let playedCard = thoughts.find(function(thought){
-            //this might be too clever, the method called will return false if it was not legal
-            let result = use[thought.action](thought);
-            
-            if(result)
-                console.log(JSON.stringify(thought)+'\n');
-                
-            return result;
-        });
-
-        //should not need this. just checking
-        // convert this to a test
-        if(typeof playedCard == "array"){
-            console.log(thoughts);
-            console.log(playedCard);
-            throw Error("incorrect return type from find");
-        }
-
-        let isLegal = !!playedCard;
-        //rule: if there is no legal action, then just discard a card (todo: select smartly using highest risk)
-        playedCard = playedCard || me.hand.splice(0, 1); //.sort.splice(0,1)
-
-        if(!isLegal){
-            console.log("no legal move", "discarding", playedCard);
-            console.log(thoughts);
-        }
-
-
+        //uses the card and its actions take whatever effect
+        game.turn();
 
         //todo: db.stashRound(turnData) (push to q system)
-            stashEvents.push({
-                round: round,
-                turns: turns,
-                gameState: gameState.map(function(g){g.m = g.m.toString(); return g;}),
-                thoughts: thoughts.slice(0),
-                choice: playedCard,
-                legal: isLegal
-            });
+            // stashEvents.push({
+            //     round: round,
+            //     turns: turns,
+            //     gameState: gameState.map(function(g){g.m = g.m.toString(); return g;}),
+            //     thoughts: thoughts.slice(0),
+            //     choice: playedCard,
+            //     legal: isLegal
+            // });
 
-
-        //todo: endTurn(me, playedCard)
-            me.isTurn = false;
-            turns++;
-
-            //todo: just call me.discard() ??
-            playedCard.user = me.uuid;
-            sharedDeck.discard(playedCard);
-
-            //if no cards in deck.end game with high card
-            if(!sharedDeck.pile.length){
-                console.log("sharedDeck is empty", "eliminating low card holders...");
-                
-                function validPlayer(p){
-                    return p.inPlay && p.hand.length;
-                }
-                
-                let highCardPlayer = players
-                    .filter(validPlayer)
-                        .sort(function(a, b){
-                            let aVal = toMask(a.hand);
-                            let bVal = toMask(b.hand);
-                            if(aVal > bVal)
-                                return 1;
-                            else if(aVal < bVal)
-                                return -1;
-                            else
-                                return 0;
-                        })[0];
-
-                if(!highCardPlayer)
-                    throw "there is no highCardPlayer???";
-
-                players.filter(function(p){
-                    return validPlayer(p) && p.uuid != highCardPlayer.uuid;
-                }).forEach(function(p){
-                    
-                    let myCard = toMask(p.hand);
-                    let bossCard = toMask(highCardPlayer.hand);
-
-                    function promotePlayer(player){
-                        console.log("tie eliminated", highCardPlayer.name, bossCard, "<", myCard);
-                        highCardPlayer.inPlay = false;
-                        highCardPlayer = player;
-                    }
-
-                    if(myCard > bossCard) {
-                        promotePlayer(p);
-
-                    }else if(myCard === bossCard){
-                        //then sum up the sharedDeck discards for the competing players
-                        //higher number wins the draw
-
-                        let getSurplusValue = function(uuid){
-                            return sharedDeck.history(uuid)
-                                .reduce(function(p, c){
-                                    return p.mask + c.mask;
-                                });
-                        };
-
-                        let surplus = getSurplusValue(p.uuid);
-                        let bossSurplus = getSurplusValue(highCardPlayer.uuid);
-
-                        if(surplus >= bossSurplus)
-                            promotePlayer(p);
-                    }else{
-                        p.inPlay = false;
-                    }
-
-                });
-            }
-
-
-            //then: try to end game if only one player left OR if there are no cards left in the sharedDeck
-            // then winner.wins++; round++
-            // (dont just kill the loop unless 3 rounds have been attained by a single player)
-            let isLastPlayer = players.filter(function(p){return p.inPlay;}).length === 1;
+        //the instructions are most complicated here for love letter. scope is the biggest enemy right now
+        //ends the turn and potentiallty the round or game. needs more refactoring. but is at least more testable at the moment
+        game.endTurn();
         
-            if(isLastPlayer || !sharedDeck.pile.length){
-                turns = 0;
-                round++;
-                let winners = players.filter(function(p){return p.inPlay;});
-                
-                console.log("ROUND", round-1, "END", winners.map(function(p){return p.name;}));
-                //todo: tryEndGame()
-                
-                let finalWinners = [];
-                
-                winners.forEach(function(p){
-                    if(++p.wins === 3)
-                        finalWinners.push(p);
-                });
-                
-                if(finalWinners.length){
-                    console.log("GAME OVER", finalWinners.map(function(p){return p.name;}));
-                    //todo: cur = winner.index;
-                    inGame = false;
-                }else{
-                    resetRound();
-                }
-                
-            }
+        let isLastPlayer = players.filter(t.isValidPlayer).length === 1;
+        
+        //if no cards in deck.end game with high card
+        if(!sharedDeck.pile.length)
+            game.endRoundTieBreak();
+        
+        //this is valid because two people can win in a deckOut
+        if(isLastPlayer || !sharedDeck.pile.length)
+            game.endRoundWinner();
     }
 
     console.log("game has ended!");
-    //console.log(JSON.stringify(stashEvents, null, ' '));
 }
 
 try {

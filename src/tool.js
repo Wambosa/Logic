@@ -22,6 +22,17 @@ function simplify(list, field_){
     });
 }
 
+function isValidPlayer(p){
+    return p.inPlay && p.hand.length;
+}
+
+function toMask(list, field_){
+    let field = field_ || 'mask';
+    return simplify(dedup(list), field).reduce(function(prev, cur){
+        return prev + cur;
+    });
+}
+
 module.exports = {
 
     random: random,
@@ -30,12 +41,7 @@ module.exports = {
 
     dedup: dedup,
 
-    toMask: function(list, field_){
-        let field = field_ || 'mask';
-        return simplify(dedup(list), field).reduce(function(prev, cur){
-            return prev + cur;
-        });
-    },
+    toMask: toMask,
 
     shuffle: function (list_) {
         let list = list_.slice(0);
@@ -88,5 +94,22 @@ module.exports = {
             }
         };
 
+    },
+    
+    //todo: tests for the following funcs
+    isValidPlayer: isValidPlayer,
+    
+    highCardPlayer: function(players){
+        return players.filter(isValidPlayer)
+            .sort(function(a, b){
+                let aVal = toMask(a.hand);
+                let bVal = toMask(b.hand);
+                if(aVal > bVal)
+                    return 1;
+                else if(aVal < bVal)
+                    return -1;
+                else
+                    return 0;
+            })[0];
     }
 };

@@ -19,20 +19,27 @@ describe("a cardUse instance", function(){
     const countess = 64;
     const princess = 128;
 
-    //todo: find a home for these player actions
+    //todo: remove these and utilize t.drawFrom and t.discardTo with Deck
     var draw = _.curry(function(playPile){
         return function(){
             this.hand.push(playPile.pop());
         };
     });
 
-    //note: only supports a single card discard
     var discard = _.curry(function(discardPile){
         return function() {
             discardPile.push(this.hand.pop());
         };
     });
-
+    
+    /*
+    This test should be run on all actions
+    describe "given an action" "ACCUSE runs successfully" "expect no array"
+    if(typeof playedCard == "array"){
+        throw Error("incorrect return type from find");
+    }
+    */
+    
     describe("when removing peek knowledge", function(){
 
         let removePeek = use.__get__('removePeek');
